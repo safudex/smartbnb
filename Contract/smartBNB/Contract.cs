@@ -1,6 +1,7 @@
 ﻿using Neo.SmartContract.Framework;
 using Neo.SmartContract.Framework.Services.Neo;
 using System;
+using System.Numerics;
 
 namespace smartBNB
 {
@@ -21,6 +22,77 @@ namespace smartBNB
                 }
             }
             return true;
+        }
+
+        // secp256k1 is defined in the ring Z/pZ
+        private BigInteger p = 115792089237316195423570985008687907853269984665640564039457584007908834671663;
+        // y^2 = x^3 + 7
+        private BigInteger a = 0;
+
+        private BigInteger b = 7;
+        // https://en.bitcoin.it/wiki/Secp256k1
+        // https://bitcointalk.org/index.php?topic=237260.0
+        private BigInteger n = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
+        private BigInteger G_x = 55066263022277343669578718895168534326250603453777594175500187360389116729240;
+        private BigInteger G_y = 32670510020758816978083085130507043184471273380659243275938904335757337482424;
+        private BigInteger n = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
+        private BigInteger L_n = 256; // bit length of n
+                                      // Calculated using the fact that n*G=O
+        private BigInteger 0_x = 
+		private BigInteger 0_y = 
+
+
+		private static BigInteger SHA256(byte[] message)
+        {
+            // Implemented by NEOVM, see bytecode 0xA8 on https://docs.neo.org/developerguide/en/articles/neo_vm.html
+            // https://docs.neo.org/docs/en-us/reference/scapi/fw/dotnet.html
+            return Sha256(message).AsBigInteger();
+        }
+
+        // https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Point_multiplication
+        private static Tuple<BigInteger, BigInteger> scalarMultECC(BigInteger x, BigInteger y, BigInteger k)
+        {
+            BigInteger x, y;
+            return Tuple.Create(x, y);
+        }
+
+        // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
+        // inverse_s needs to be calculated by the contract caller
+        private static bool verifyECSDA(BigInteger r, BigInteger s, byte[] message, BigInteger pubkey_x, BigInteger pubkey_y, BigInteger inverse_s)
+        {
+            // Verify public key is valid
+
+            // Verify signature coordinates
+            if (r <= 0 || r >= n || s <= 0 || s >= n){ // r,s \in [1, n-1]
+                return false;
+            }
+            BigInteger e = SHA256(message);
+            BigInteger z = e; // Nothing to be done as e's bit length is 256 == L_n
+            if (((s * inverse_s) % n) != 1)
+            { // Verify inverse_s is correct
+                return false;
+            }
+            BigInteger u1 = (z * inverse_s) % n;
+
+            BigInteger u2 = (r * inverse_s) % n;
+            // The following part (sum of scalar point multiplications) can be optimized further using some math but I chose code correctness over cost
+            Tuple<BigInteger, BigInteger> mul1 = scalarMultECC(G_x, G_y, u1);
+
+            Tuple<BigInteger, BigInteger> mul2 = scalarMultECC(pubkey_x, pubkey_y, u2);
+
+            BigInteger x1 = mul1.Item1 + mul2.Item1;
+            BigInteger y1 = mul1.Item2 + mul2.Item2;
+            if (x1 == 0_x && y1 == 0_y){ //Check if (x1, y1) == O
+                return false;
+            }
+            if (r == (x1 % n))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         private static bool Validate(byte[] proof)
