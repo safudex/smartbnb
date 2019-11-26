@@ -25,22 +25,20 @@ namespace smartBNB
         }
 
         // secp256k1 is defined in the ring Z/pZ
-        private BigInteger p = 115792089237316195423570985008687907853269984665640564039457584007908834671663;
+        private static readonly BigInteger p = BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007908834671663");
         // y^2 = x^3 + 7
-        private BigInteger a = 0;
+        private static readonly BigInteger a = 0;
 
-        private BigInteger b = 7;
+        private static readonly BigInteger b = 7;
         // https://en.bitcoin.it/wiki/Secp256k1
         // https://bitcointalk.org/index.php?topic=237260.0
-        private BigInteger n = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
-        private BigInteger G_x = 55066263022277343669578718895168534326250603453777594175500187360389116729240;
-        private BigInteger G_y = 32670510020758816978083085130507043184471273380659243275938904335757337482424;
-        private BigInteger n = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
-        private BigInteger L_n = 256; // bit length of n
-                                      // Calculated using the fact that n*G=O
-        private BigInteger 0_x = 
-		private BigInteger 0_y = 
-
+        private static readonly BigInteger n = BigInteger.Parse("115792089237316195423570985008687907852837564279074904382605163141518161494337");
+        private static readonly BigInteger G_x = BigInteger.Parse("55066263022277343669578718895168534326250603453777594175500187360389116729240");
+        private static readonly BigInteger G_y = BigInteger.Parse("32670510020758816978083085130507043184471273380659243275938904335757337482424");
+        private static readonly BigInteger L_n = 256; // bit length of n
+                                                      // Calculated using the fact that n*G=O
+        private static readonly BigInteger x_0 = 0;
+        private static readonly BigInteger y_0 = 0;
 
 		private static BigInteger SHA256(byte[] message)
         {
@@ -50,10 +48,10 @@ namespace smartBNB
         }
 
         // https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Point_multiplication
-        private static Tuple<BigInteger, BigInteger> scalarMultECC(BigInteger x, BigInteger y, BigInteger k)
+        private static BigInteger[] scalarMultECC(BigInteger x, BigInteger y, BigInteger k)
         {
-            BigInteger x, y;
-            return Tuple.Create(x, y);
+            BigInteger x1, y2;
+            return new BigInteger[2] { x, y };
         }
 
         // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
@@ -76,13 +74,13 @@ namespace smartBNB
 
             BigInteger u2 = (r * inverse_s) % n;
             // The following part (sum of scalar point multiplications) can be optimized further using some math but I chose code correctness over cost
-            Tuple<BigInteger, BigInteger> mul1 = scalarMultECC(G_x, G_y, u1);
+            BigInteger[] mul1 = scalarMultECC(G_x, G_y, u1);
 
-            Tuple<BigInteger, BigInteger> mul2 = scalarMultECC(pubkey_x, pubkey_y, u2);
+            BigInteger[] mul2 = scalarMultECC(pubkey_x, pubkey_y, u2);
 
-            BigInteger x1 = mul1.Item1 + mul2.Item1;
-            BigInteger y1 = mul1.Item2 + mul2.Item2;
-            if (x1 == 0_x && y1 == 0_y){ //Check if (x1, y1) == O
+            BigInteger x1 = mul1[0] + mul2[0];
+            BigInteger y1 = mul1[1] + mul2[1];
+            if (x1 == x_0 && y1 == y_0){ //Check if (x1, y1) == O
                 return false;
             }
             if (r == (x1 % n))
