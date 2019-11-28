@@ -7,6 +7,7 @@ namespace smartBNB
 {
     public class Contract : SmartContract
     {
+        private static readonly byte[] leafPrefix = { 0x00 };
         private static readonly byte[] innerPrefix = { 0x01 };
 
         // secp256k1 is defined in the ring Z/pZ
@@ -55,7 +56,6 @@ namespace smartBNB
                 throw new Exception("Proof is not internally consistent");
             return true;
         }
-
 
         // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
         // inverse_s needs to be calculated by the contract caller
@@ -155,14 +155,14 @@ namespace smartBNB
                     int numLeft = GetSplitPoint(total);
                     if (index < numLeft)
                     {
-                        byte[] leftHash = ComputeHashFromAunts(index, numLeft, leafHash, TakeArray(innerHashes, innerHashes.Length - 1));
+                        byte[] leftHash = ComputeHashFromAunts(index, numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
                         if (leftHash == null)
                         {
                             return null;
                         }
                         return InnerHash(leftHash, innerHashes[innerHashes.Length - 1]);
                     }
-                    byte[] rightHash = ComputeHashFromAunts(index - numLeft, total - numLeft, leafHash, TakeArray(innerHashes, innerHashes.Length - 1));
+                    byte[] rightHash = ComputeHashFromAunts(index - numLeft, total - numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
                     if (rightHash == null)
                     {
                         return null;
@@ -207,6 +207,12 @@ namespace smartBNB
             return Sha256(innerPrefix.Concat(left.Concat(right)));
         }
 
+        // returns Sha256(0x00 || leaf)
+        private static byte[] LeafHash(byte[] leaf)
+        {
+            return Sha256(leafPrefix.Concat(leaf));
+        }
+
         private static bool AreEqual(byte[] a1, byte[] b1)
         {
             if (a1.Length == b1.Length)
@@ -225,16 +231,32 @@ namespace smartBNB
             return false;
         }
 
-        // returns the left-most X byte arrays from an array of byte arrays
-        private static byte[][] TakeArray(byte[][] original, int count)
+        // returns the byte arrays located between indexes ini and fin (both included)
+        private static byte[][] TakeArrays(byte[][] arr, int ini, int fin)
         {
-            int len = (original.Length - count) & count;
+            int len = (fin - ini);
             byte[][] cutted = new byte[len][];
-            for (int i = 0; i < len; i++)
+            for (int i = 0; i <= len; i++)
             {
-                cutted[i] = original[i];
+                cutted[i] = arr[ini+i];
             }
             return cutted;
+        }
+
+        private static byte[] SimpleHashFromByteSlices(byte[][] slices)
+        {
+            switch (slices.Length)
+            {
+                case 0:
+                    return null;
+                case 1:
+                    return LeafHash(slices[0]);
+                default:
+                    int k = GetSplitPoint(slices.Length);
+                    byte[] left = SimpleHashFromByteSlices(TakeArrays(slices, 0, k));
+                    byte[] right = SimpleHashFromByteSlices(TakeArrays(slices, k, slices.Length-1));
+                    return InnerHash(left, right);
+            }
         }
 
         private static BigInteger SHA256(byte[] message)
