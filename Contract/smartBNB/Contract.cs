@@ -162,6 +162,7 @@ namespace smartBNB
                         }
                         return InnerHash(leftHash, innerHashes[innerHashes.Length - 1]);
                     }
+                    
                     byte[] rightHash = ComputeHashFromAunts(index - numLeft, total - numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
                     if (rightHash == null)
                     {
