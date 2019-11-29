@@ -33,7 +33,7 @@ namespace smartBNB
                 switch (operation)
                 {
                     case "spv":
-                        return Validate((byte[])args[0]);
+                        return Validate((byte[])args[0], (byte[])args[1], (byte[])args[2]);
                     default:
                         return false;
                 }
@@ -41,8 +41,14 @@ namespace smartBNB
             return true;
         }
 
-        private static bool Validate(byte[] proof)
+        private static bool Validate(byte[] proof, byte[] header, byte[] signatures)
         {
+            /*
+            // Verify relationship with the block
+            if (!AreEqual(header.Range(), proof.Range()))
+                throw new Exception("Relationship with the signed block cannot be verified");            
+            */
+
             /*
             // Verify signatures
             bool isValidBlock = VerifyBlock();
@@ -50,7 +56,7 @@ namespace smartBNB
                 throw new Exception("cuck");
             */
 
-            // SPV Proof
+            // Verify merkle tree
             bool isValidTx = VerifyTx(proof);
             if (isValidTx != true)
                 throw new Exception("Proof is not internally consistent");
@@ -214,30 +220,22 @@ namespace smartBNB
             return Sha256(leafPrefix.Concat(leaf));
         }
 
-        private static bool AreEqual(byte[] a1, byte[] b1, int start = 0)
+        private static bool AreEqual(byte[] a1, byte[] b1)
         {
-            if (a1.Length - start == b1.Length)
+            if (a1.Length == b1.Length)
             {
                 int i = 0;
-                while (i < a1.Length && (a1[i + start] == b1[i]))
+                while (i < a1.Length && (a1[i] == b1[i]))
                 {
                     i++;
                 }
-                if (i == a1.Length-start)
+                if (i == a1.Length)
                 {
                     return true;
                 }
             }
 
             return false;
-        }
-
-        private static bool CheckHashEncoding(byte[] encoded, byte[] hash)
-        {
-            if ((encoded[0] != hash.Length) || !AreEqual(encoded, hash, 1))
-                return false;
-
-            return true;
         }
 
         // returns the byte arrays located between indexes ini and fin (both included)
