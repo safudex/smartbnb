@@ -214,22 +214,30 @@ namespace smartBNB
             return Sha256(leafPrefix.Concat(leaf));
         }
 
-        private static bool AreEqual(byte[] a1, byte[] b1)
+        private static bool AreEqual(byte[] a1, byte[] b1, int start = 0)
         {
-            if (a1.Length == b1.Length)
+            if (a1.Length - start == b1.Length)
             {
                 int i = 0;
-                while (i < a1.Length && (a1[i] == b1[i]))
+                while (i < a1.Length && (a1[i + start] == b1[i]))
                 {
                     i++;
                 }
-                if (i == a1.Length)
+                if (i == a1.Length-start)
                 {
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private static bool CheckHashEncoding(byte[] encoded, byte[] hash)
+        {
+            if ((encoded[0] != hash.Length) || !AreEqual(encoded, hash, 1))
+                return false;
+
+            return true;
         }
 
         // returns the byte arrays located between indexes ini and fin (both included)
