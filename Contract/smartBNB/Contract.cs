@@ -41,25 +41,52 @@ namespace smartBNB
             return true;
         }
 
-        private static bool Validate(byte[] proof, byte[] header, byte[] signatures)
+        private static bool Validate(byte[] rawProof, byte[] rawHeader, byte[] rawSignatures)
         {
             /*
             // Verify relationship with the block
-            if (!AreEqual(header.Range(), proof.Range()))
+            if (!AreEqual(rawHeader.Range(), rawSignatures.Range()))
                 throw new Exception("Relationship with the signed block cannot be verified");            
             */
 
-            /*
             // Verify signatures
-            bool isValidBlock = VerifyBlock();
-            if (validBlock != true)
+            bool isValidBlock = VerifyBlock(rawHeader, rawSignatures);
+            if (isValidBlock != true)
                 throw new Exception("cuck");
-            */
 
             // Verify merkle tree
-            bool isValidTx = VerifyTx(proof);
+            bool isValidTx = VerifyTx(rawProof);
             if (isValidTx != true)
                 throw new Exception("Proof is not internally consistent");
+            return true;
+        }
+
+        private static bool VerifyBlock(byte[] rawHeader, byte[] rawSignatures)
+        {
+            //Obtaining header slices
+            byte[][] headerSlices = new byte[16][];
+            int accLen = 0;
+            for (int i = 0; i <= 16; i++)
+            {
+                headerSlices[i] = rawHeader.Range(accLen+1, rawHeader[accLen]);
+                accLen += rawHeader[accLen]+1;
+            }
+
+            //Hashing header
+            byte[] headerHash = SimpleHashFromByteSlices(headerSlices);
+
+
+            //Obtaining signatures
+            byte[][] signatures = new byte[11][];
+            for (int i = 0; i <= 11; i++)
+            {
+                signatures[i] = rawSignatures.Range(i*64, 64);
+            }
+            /*
+            if (!VerifySignatures(headerHash, signatures))
+                throw new Exception("Cruck");
+            */
+
             return true;
         }
 
@@ -113,7 +140,6 @@ namespace smartBNB
 
         private static bool VerifyTx(byte[] proof)
         {
-
             byte[] blockDataHash = proof.Range(0, 64);
             byte[] txProofRootHash = proof.Range(64, 64);
             byte[] txProofLeafHash = proof.Range(128, 64);
