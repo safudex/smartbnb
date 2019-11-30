@@ -10,18 +10,18 @@ namespace smartBNB
         private static readonly byte[] leafPrefix = { 0x00 };
         private static readonly byte[] innerPrefix = { 0x01 };
 
-        private static readonly byte[][] validatorsAddresses = {
-            new byte[] {17, 117, 148, 106, 72, 234, 164, 115, 134, 138, 10, 111, 82, 230, 198, 108, 202, 244, 114, 234},
-            new byte[] {20, 207, 206, 105, 182, 69, 243, 248, 139, 175, 8, 234, 91, 119, 250, 82, 30, 68, 128, 249},
-            new byte[] {23, 180, 46, 143, 40, 77, 60, 160, 228, 32, 38, 47, 137, 205, 118, 199, 73, 187, 18, 201},
-            new byte[] {60, 212, 170, 186, 189, 222, 183, 171, 254, 169, 97, 135, 50, 227, 49, 7, 122, 134, 29, 43},
-            new byte[] {65, 79, 179, 187, 162, 22, 175, 132, 196, 126, 7, 214, 235, 170, 45, 207, 195, 86, 58, 47},
-            new byte[] {113, 242, 83, 230, 254, 169, 237, 212, 180, 117, 63, 84, 131, 84, 159, 228, 240, 243, 162, 28},
-            new byte[] {114, 53, 239, 20, 61, 32, 252, 10, 188, 66, 118, 21, 216, 48, 20, 187, 2, 215, 192, 108},
-            new byte[] {167, 30, 92, 208, 120, 184, 197, 199, 177, 175, 136, 188, 232, 77, 215, 11, 5, 87, 217, 62},
-            new byte[] {169, 21, 123, 63, 166, 235, 76, 30, 57, 107, 155, 116, 110, 149, 50, 122, 7, 220, 66, 229},
-            new byte[] {176, 251, 181, 47, 247, 238, 147, 204, 71, 109, 254, 107, 116, 250, 31, 200, 133, 132, 243, 13},
-            new byte[] {183, 112, 125, 159, 89, 60, 98, 232, 91, 185, 225, 162, 54, 109, 18, 169, 124, 213, 223, 242}
+        private static readonly string[] validatorsAddresses = {
+            "1175946A48EAA473868A0A6F52E6C66CCAF472EA",
+            "14CFCE69B645F3F88BAF08EA5B77FA521E4480F9",
+            "17B42E8F284D3CA0E420262F89CD76C749BB12C9",
+            "3CD4AABABDDEB7ABFEA9618732E331077A861D2B",
+            "414FB3BBA216AF84C47E07D6EBAA2DCFC3563A2F",
+            "71F253E6FEA9EDD4B4753F5483549FE4F0F3A21C",
+            "7235EF143D20FC0ABC427615D83014BB02D7C06C",
+            "A71E5CD078B8C5C7B1AF88BCE84DD70B0557D93E",
+            "A9157B3FA6EB4C1E396B9B746E95327A07DC42E5",
+            "B0FBB52FF7EE93CC476DFE6B74FA1FC88584F30D",
+            "B7707D9F593C62E85BB9E1A2366D12A97CD5DFF2"
         };
 
         // secp256k1 is defined in the ring Z/pZ
@@ -182,7 +182,7 @@ namespace smartBNB
                         }
                         return InnerHash(leftHash, innerHashes[innerHashes.Length - 1]);
                     }
-
+                    
                     byte[] rightHash = ComputeHashFromAunts(index - numLeft, total - numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
                     if (rightHash == null)
                     {
@@ -259,7 +259,7 @@ namespace smartBNB
             byte[][] cutted = new byte[len][];
             for (int i = 0; i <= len; i++)
             {
-                cutted[i] = arr[ini + i];
+                cutted[i] = arr[ini+i];
             }
             return cutted;
         }
@@ -275,7 +275,7 @@ namespace smartBNB
                 default:
                     int k = GetSplitPoint(slices.Length);
                     byte[] left = SimpleHashFromByteSlices(TakeArrays(slices, 0, k));
-                    byte[] right = SimpleHashFromByteSlices(TakeArrays(slices, k, slices.Length - 1));
+                    byte[] right = SimpleHashFromByteSlices(TakeArrays(slices, k, slices.Length-1));
                     return InnerHash(left, right);
             }
         }
