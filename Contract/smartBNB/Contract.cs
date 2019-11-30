@@ -66,7 +66,7 @@ namespace smartBNB
             //Obtaining header slices
             byte[][] headerSlices = new byte[16][];
             int accLen = 0;
-            for (int i = 0; i <= 16; i++)
+            for (int i = 0; i < 16; i++)
             {
                 headerSlices[i] = rawHeader.Range(accLen+1, rawHeader[accLen]);
                 accLen += rawHeader[accLen]+1;
@@ -75,10 +75,9 @@ namespace smartBNB
             //Hashing header
             byte[] headerHash = SimpleHashFromByteSlices(headerSlices);
 
-
             //Obtaining signatures
             byte[][] signatures = new byte[11][];
-            for (int i = 0; i <= 11; i++)
+            for (int i = 0; i < 11; i++)
             {
                 signatures[i] = rawSignatures.Range(i*64, 64);
             }
