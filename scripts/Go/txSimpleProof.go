@@ -90,8 +90,8 @@ func main() {
 	hLastBlockID := cdcEncode(h.LastBlockID)
 	hLastCommitHash := cdcEncode(h.LastCommitHash)
 	hDataHash := cdcEncode(h.DataHash)
-	hValidatorHash := cdcEncode(h.ValidatorsHash)
-	hNexValidatorHash := cdcEncode(h.NextValidatorsHash)
+	hValidatorsHash := cdcEncode(h.ValidatorsHash)
+	hNextValidatorsHash := cdcEncode(h.NextValidatorsHash)
 	hConsensusHash := cdcEncode(h.ConsensusHash)
 	hAppHash := cdcEncode(h.AppHash)
 	hLastResultsHash := cdcEncode(h.LastResultsHash)
@@ -108,8 +108,8 @@ func main() {
 		hLastBlockID,
 		hLastCommitHash,
 		hDataHash,
-		hValidatorHash,
-		hNexValidatorHash,
+		hValidatorsHash,
+		hNextValidatorsHash,
 		hConsensusHash,
 		hAppHash,
 		hLastResultsHash,
