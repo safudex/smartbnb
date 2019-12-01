@@ -27,6 +27,7 @@ func main() {
 
 	//getting tx from node
 	txHash := "D911AA793757C2FD20EF340E2EBF82180B5A9CAA26FB15269086DE24FD6AF776"
+	fmt.Println("txHash", "D911AA793757C2FD20EF340E2EBF82180B5A9CAA26FB15269086DE24FD6AF776")
 	bytesTxHash, _ := hex.DecodeString(txHash) 
 	restx, _ := client.Tx(bytesTxHash, true)
 
@@ -74,12 +75,14 @@ func main() {
 	fmt.Println("________________Send to smart contract________________")
 	fmt.Println("_______________________Tx Proof_______________________")
 	fmt.Println(paq)
+	fmt.Println(hex.EncodeToString(paq))
 	fmt.Println("______________________________________________________")
 
 
 	//block header
 	//actual block header
 	h := resBlock.Block.Header
+	fmt.Println("HeaderHashhhh", h.Hash())
 
 	hVersion := cdcEncode(h.Version)
 	hChainID := cdcEncode(h.ChainID)
@@ -125,6 +128,7 @@ func main() {
 
 	fmt.Println("____________________Encoded header____________________")
 	fmt.Println(paqHeader)
+	fmt.Println(hex.EncodeToString(paqHeader))
 	fmt.Println("______________________________________________________")
 
 	//signatures
@@ -141,6 +145,7 @@ func main() {
 
 	fmt.Println("______________________Signatures______________________")
 	fmt.Println(paqSignatures)
+	fmt.Println(hex.EncodeToString(paqSignatures))
 	fmt.Println("______________________________________________________")
 
 }
