@@ -1,11 +1,11 @@
 package main
 
 import (
-    "encoding/hex"
-    "fmt"
-    "github.com/binance-chain/go-sdk/client/rpc"
-    ctypes "github.com/binance-chain/go-sdk/common/types"
-    "github.com/binance-chain/go-sdk/types"
+	"encoding/hex"
+	"fmt"
+	"github.com/binance-chain/go-sdk/client/rpc"
+	ctypes "github.com/binance-chain/go-sdk/common/types"
+	"github.com/binance-chain/go-sdk/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -14,10 +14,10 @@ var cdc = types.NewCodec()
 // cdcEncode returns nil if the input is nil, otherwise returns
 // cdc.MustMarshalBinaryBare(item)
 func cdcEncode(item interface{}) []byte {
-        if item != nil && !cmn.IsTypedNil(item) && !cmn.IsEmpty(item) {
-                return cdc.MustMarshalBinaryBare(item)
-        }
-        return nil
+	if item != nil && !cmn.IsTypedNil(item) && !cmn.IsEmpty(item) {
+		return cdc.MustMarshalBinaryBare(item)
+	}
+	return nil
 }
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 	client := rpc.NewRPCClient(nodeAddr, ctypes.ProdNetwork)
 
 	//getting tx from node
-	txHash := "9C9871AD4ADF2D525686FB0F6B18B79D6F0B09DF5147AC123C544A5C9487D4A4"
+	txHash := "D911AA793757C2FD20EF340E2EBF82180B5A9CAA26FB15269086DE24FD6AF776"
 	bytesTxHash, _ := hex.DecodeString(txHash) 
 	restx, _ := client.Tx(bytesTxHash, true)
 
@@ -116,6 +116,7 @@ func main() {
 		hEvidenceHash,
 		hProposerAddress}
 
+        //paqHeader <- (len(hVersion) | hVersion | len(hChainID) | hChainID | ... | len(hProposerAddress) | hProposerAddress )
 	paqHeader := make([]byte, 0)
 	for i:=0; i<len(headerArray);i++{
 		paqHeader = append(paqHeader, byte(len(headerArray[i])))
@@ -132,7 +133,7 @@ func main() {
 	resNextBlock, _ := client.Block(&nextBlockHeight) //get height+1 to obtain signatures of height
 	s := resNextBlock.Block.LastCommit.Precommits
 
-
+        //paqSignatures <- (signature0 | signature1 | signature2 | ... | signature10 )
 	paqSignatures := make([]byte, 0)
 	for i:=0; i<len(s);i++{
 		paqSignatures = append(paqSignatures, s[i].Signature...)
