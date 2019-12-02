@@ -266,9 +266,9 @@ namespace smartBNB
         // returns the byte arrays located between indexes ini and fin (both included)
         private static byte[][] TakeArrays(byte[][] arr, int ini, int fin)
         {
-            int len = (fin - ini);
+            int len = (fin - ini)+1;
             byte[][] cutted = new byte[len][];
-            for (int i = 0; i <= len; i++)
+            for (int i = 0; i < len; i++)
             {
                 cutted[i] = arr[ini+i];
             }
