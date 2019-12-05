@@ -285,7 +285,7 @@ namespace smartBNB
                     return LeafHash(slices[0]);
                 default:
                     int k = GetSplitPoint(slices.Length);
-                    byte[] left = SimpleHashFromByteSlices(TakeArrays(slices, 0, k));
+                    byte[] left = SimpleHashFromByteSlices(TakeArrays(slices, 0, k-1));
                     byte[] right = SimpleHashFromByteSlices(TakeArrays(slices, k, slices.Length-1));
                     return InnerHash(left, right);
             }
