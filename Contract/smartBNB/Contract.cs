@@ -209,28 +209,14 @@ namespace smartBNB
             if (length < 1)
                 throw new Exception("Trying to split a tree with size < 1");
 
-            uint uLength = (uint)length;
-
-            int bitlen = (int)GetBitsCount(uLength);
-
-            int k = 1 << (bitlen - 1);
-            if (k == length)
-            {
-                k >>= 1;
-            }
-            return k;
-        }
-
-        // returns the number of significant bits in n
-        private static uint GetBitsCount(uint n)
-        {
-            uint count = 0;
-            while (n > 0)
-            {
-                count += 1;
-                n >>= 1;
-            }
-            return count;
+            switch(length%20){
+				case 0:
+					return length/2;
+					break;
+				default:
+					return (length+1)/2;
+					break;
+			}
         }
 
         // returns Sha256(0x01 || left || right)
