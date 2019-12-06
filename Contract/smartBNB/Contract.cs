@@ -139,17 +139,17 @@ namespace smartBNB
 
         private static bool VerifyTx(byte[] proof)
         {
-            byte[] blockDataHash = proof.Range(0, 64);
-            byte[] txProofRootHash = proof.Range(64, 64);
-            byte[] txProofLeafHash = proof.Range(128, 64);
-            int txProofIndex = proof.Range(192, 2)[0];
-            int txProofTotal = proof.Range(194, 2)[0];
+            byte[] blockDataHash = proof.Range(0, 32);
+            byte[] txProofRootHash = proof.Range(32, 32);
+            byte[] txProofLeafHash = proof.Range(64, 32);
+            int txProofIndex = proof.Range(96, 1)[0];
+            int txProofTotal = proof.Range(97, 1)[0];
 
-            int len = proof.Range(196, proof.Length - 196).Length / 64;
+            int len = proof.Range(98, proof.Length - 98).Length / 32;
             byte[][] txProofAunts = new byte[len][];
             for (int i = 0; i < len; i++)
             {
-                txProofAunts[i] = proof.Range(196 + (i * 64), 64);
+                txProofAunts[i] = proof.Range(98 + (i * 32), 32);
             }
 
             if (!AreEqual(blockDataHash, txProofRootHash))
