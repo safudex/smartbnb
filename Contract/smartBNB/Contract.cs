@@ -209,7 +209,7 @@ namespace smartBNB
             if (length < 1)
                 throw new Exception("Trying to split a tree with size < 1");
 
-            switch(length%20){
+            switch(length%2){
 				case 0:
 					return length/2;
 					break;
