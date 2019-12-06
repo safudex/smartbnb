@@ -48,14 +48,11 @@ namespace smartBNB
                 throw new Exception("Relationship with the signed block cannot be verified");            
 
             // Verify signatures
-            bool isValidBlock = VerifyBlock(rawHeader, rawSignatures);
-            if (isValidBlock != true)
-                throw new Exception("cuck");
+            VerifyBlock(rawHeader, rawSignatures);
 
             // Verify merkle tree
-            bool isValidTx = VerifyTx(rawProof);
-            if (isValidTx != true)
-                throw new Exception("Proof is not internally consistent");
+            VerifyTx(rawProof);
+
             return true;
         }
 
@@ -137,8 +134,7 @@ namespace smartBNB
 
         private static bool VerifyTx(byte[] proof)
         {
-            byte[] blockDataHash = proof.Range(0, 32);
-            byte[] txProofRootHash = proof.Range(32, 32);
+            byte[] txProofRootHash = proof.Range(32, 32); //TODO: fix indixs
             byte[] txProofLeafHash = proof.Range(64, 32);
             int txProofIndex = proof.Range(96, 1)[0];
             int txProofTotal = proof.Range(97, 1)[0];
@@ -150,8 +146,6 @@ namespace smartBNB
                 txProofAunts[i] = proof.Range(98 + (i * 32), 32);
             }
 
-            if (!AreEqual(blockDataHash, txProofRootHash))
-                throw new Exception("Proof matches different data hash");
             if (txProofIndex < 0)
                 throw new Exception("Proof index cannot be negative");
             if (txProofTotal <= 0)
@@ -166,7 +160,7 @@ namespace smartBNB
 
         private static byte[] ComputeHashFromAunts(int index, int total, byte[] leafHash, byte[][] innerHashes)
         {
-            if (index >= total || index < 0 || total <= 0)
+            if (index >= total)
                 return null;
 
             switch (total)
