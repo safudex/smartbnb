@@ -26,6 +26,10 @@ namespace smartBNB
         private static readonly BigInteger x_0 = 0;
         private static readonly BigInteger y_0 = 0;
 
+        private static readonly BigInteger Pcurve = BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007908834671663");
+        private static readonly BigInteger Acurve = 0;
+        private static readonly BigInteger N = BigInteger.Parse("115792089237316195423570985008687907852837564279074904382605163141518161494337");
+
         public static bool Main(string operation, params object[] args)
         {
             if (Runtime.Trigger == TriggerType.Application)
@@ -130,6 +134,92 @@ namespace smartBNB
         {
             BigInteger x1, y2;
             return new BigInteger[2] { x, y };
+        }
+
+        /*
+        //BUGGY, NEED TO FIX
+        private static BigInteger[] EccMultiply(BigInteger xs, BigInteger ys, BigInteger Scalar)
+        {
+            if (Scalar == 0 || Scalar >= N)
+                throw new Exception("Invalid Scalar");
+
+            BigInteger Qx = xs;
+            BigInteger Qy = ys;
+
+            for (int i = GetBitsCount(Scalar) - 1; i >= 0; i--)
+            {
+                BigInteger[] resECdouble = ECdouble(Qx, Qy);
+                Qx = resECdouble[0];
+                Qy = resECdouble[1];
+                if (((Scalar >> i) & 1) == 1)
+                {
+                    BigInteger[] resECadd = ECadd(Qx, Qy, xs, ys);
+                    Qx = resECadd[0];
+                    Qy = resECadd[1];
+                }
+            }
+
+            return new BigInteger[2] { Qx, Qy };
+        }
+
+
+        private static int GetBitsCount(BigInteger n)
+        {
+            int count = 0;
+            while (n > 0)
+            {
+                n >>= 1;
+                count++;
+            }
+            return count;
+        }
+        */
+
+        private static BigInteger[] ECdouble(BigInteger xp, BigInteger yp)
+        {
+            BigInteger LamNumer = 3 * xp * xp + Acurve;
+            BigInteger LamDenom = 2 * yp;
+            BigInteger Lam = mod((LamNumer * ModInv(LamDenom, Pcurve)), Pcurve);
+            BigInteger xr = mod((Lam * Lam - 2 * xp), Pcurve);
+            BigInteger yr = mod((Lam * (xp - xr) - yp), Pcurve);
+            return new BigInteger[2] { xr, yr };
+        }
+
+        private static BigInteger[] ECadd(BigInteger xp, BigInteger yp, BigInteger xq, BigInteger yq)
+        {
+            BigInteger m = mod(((yq - yp) * ModInv(xq - xp, Pcurve)), Pcurve);
+            BigInteger xr = mod((m * m - xp - xq), Pcurve);
+            BigInteger yr = mod((m * (xp - xr) - yp), Pcurve);
+            return new BigInteger[2] { xr, yr };
+        }
+
+        private static BigInteger ModInv(BigInteger a, BigInteger n)
+        {
+            BigInteger lm = 1;
+            BigInteger hm = 0;
+            BigInteger low = mod(a, n); //a % n;
+            BigInteger high = n;
+            BigInteger ratio, nm, _new;
+            while (low > 1)
+            {
+                ratio = high / low;
+                nm = hm - lm * ratio;
+                _new = high - low * ratio;
+                BigInteger temp_lm = lm;
+                lm = nm;
+                BigInteger temp_low = low;
+                low = _new;
+                hm = temp_lm;
+                high = temp_low;
+            }
+
+            return mod(lm, n); //lm % n;
+        }
+
+        public static BigInteger mod(BigInteger x, BigInteger m)
+        {
+            BigInteger r = x % m;
+            return r < 0 ? r + m : r;
         }
 
         private static bool VerifyTx(byte[] proof)
