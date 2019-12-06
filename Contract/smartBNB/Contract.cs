@@ -77,7 +77,7 @@ namespace smartBNB
             byte[][] signatures = new byte[11][];
             for (int i = 0; i < 11; i++)
             {
-                signatures[i] = rawSignatures.Range(i*64, 64);
+                signatures[i] = rawSignatures.Range(i*32, 32);
             }
             /*
             if (!VerifySignatures(headerHash, signatures))
