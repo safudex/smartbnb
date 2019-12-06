@@ -43,11 +43,9 @@ namespace smartBNB
 
         private static bool Validate(byte[] rawProof, byte[] rawHeader, byte[] rawSignatures)
         {
-            /*
-            // Verify relationship with the block
-            if (!AreEqual(rawHeader.Range(), rawSignatures.Range()))
+            // Verify relationship with the block. Compares if hDataHash and txProofRootHash are equal
+            if (!AreEqual(rawHeader.Range(158, 32), rawProof.Range(32,32)))
                 throw new Exception("Relationship with the signed block cannot be verified");            
-            */
 
             // Verify signatures
             bool isValidBlock = VerifyBlock(rawHeader, rawSignatures);
@@ -209,14 +207,7 @@ namespace smartBNB
             if (length < 1)
                 throw new Exception("Trying to split a tree with size < 1");
 
-            switch(length%2){
-				case 0:
-					return length/2;
-					break;
-				default:
-					return (length+1)/2;
-					break;
-			}
+            return (length % 2 == 0) ? length / 2 : (length + 1) / 2;
         }
 
         // returns Sha256(0x01 || left || right)
