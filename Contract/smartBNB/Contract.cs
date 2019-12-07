@@ -48,6 +48,7 @@ namespace smartBNB
         private static bool Validate(byte[] rawProof, byte[] rawHeader, byte[] rawSignatures)
         {
             // Verify relationship with the block. Compares if hDataHash and txProofRootHash are equal
+            // TODO: Remove this comparison and compare hDataHash with computed hash from proof on TxValidation
             if (!AreEqual(rawHeader.Range(158, 32), rawProof.Range(32,32)))
                 throw new Exception("Relationship with the signed block cannot be verified");            
 
@@ -224,7 +225,7 @@ namespace smartBNB
 
         private static bool VerifyTx(byte[] proof)
         {
-            byte[] txProofRootHash = proof.Range(0, 32);
+            byte[] txProofRootHash = proof.Range(0, 32); //TODO: remove this + reindex ranges on unpacking
             byte[] txProofLeafHash = proof.Range(32, 32);
             int txProofIndex = proof.Range(64, 1)[0];
             int txProofTotal = proof.Range(65, 1)[0];
@@ -241,7 +242,9 @@ namespace smartBNB
             if (txProofTotal <= 0)
                 throw new Exception("Proof total must be positive");
 
+
             byte[] computedHash = ComputeHashFromAunts(txProofIndex, txProofTotal, txProofLeafHash, txProofAunts);
+            //TODO: change txProofRootHash for hDataHash get from Header
             if (!AreEqual(computedHash, txProofRootHash))
                 throw new Exception("Invalid root hash");
 
