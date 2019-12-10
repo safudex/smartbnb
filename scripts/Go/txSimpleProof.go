@@ -7,6 +7,9 @@ import (
 	ctypes "github.com/binance-chain/go-sdk/common/types"
 	"github.com/binance-chain/go-sdk/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	
+	v "github.com/tendermint/tendermint/types"
+        "time"
 )
 
 var cdc = types.NewCodec()
@@ -19,6 +22,46 @@ func cdcEncode(item interface{}) []byte {
 	}
 	return nil
 }
+
+//TODO: add params PrintVoteSignable
+
+func createPrecommit() *v.Vote {
+        return createVote(byte(v.PrecommitType))
+}
+
+func createVote(t byte) *v.Vote {
+        var stamp, err = time.Parse(v.TimeFormat, "2019-11-23T00:05:10.496216845Z")
+        if err != nil {
+                panic(err)
+        }
+
+        hash, _ := hex.DecodeString("DF47F7857B5828E393F95FE7DDCA2A83D581C4CA9BB8473DBAC07587185D41F8")
+        partsHash, _ := hex.DecodeString("0BC9A97061EFE72B48D3C1A3AA15AB5405F52B233E7F627F086F2BC18CD287E4")
+        validatorAddr, _ := hex.DecodeString("1175946A48EAA473868A0A6F52E6C66CCAF472EA")
+
+        return &v.Vote{
+                Type:      v.SignedMsgType(t),
+                Height:    50267548,
+                Round:     0,
+                Timestamp: stamp,
+                BlockID: v.BlockID{
+                        Hash: hash,
+                        PartsHeader: v.PartSetHeader{
+                                Total: 1,
+                                Hash:  partsHash,
+                        },
+                },
+                ValidatorAddress: validatorAddr,
+                ValidatorIndex:   0,
+        }
+}
+
+func PrintVoteSignableHex() {
+        vote := createPrecommit()
+        signBytes := vote.SignBytes("Binance-Chain-Tigris")
+        fmt.Println(hex.EncodeToString(signBytes))
+}
+
 
 func main() {
 	//init rpc client
