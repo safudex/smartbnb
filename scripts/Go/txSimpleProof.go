@@ -104,9 +104,8 @@ func main() {
 	blockDataHash := resBlock.Block.Header.DataHash
 	fmt.Println("blockDataHash: ", blockDataHash)
 
-	//paq <- (blockDataHash | txProofRootHash | txProofLeafHash | txProofIndex | txProofTotal | txProofAunts... )
+	//paq <- (txProofRootHash | txProofLeafHash | txProofIndex | txProofTotal | txProofAunts... )
 	paq := make([]byte, 0)
-	paq = append(paq, blockDataHash[:]...)
 	paq = append(paq, txProofRootHash[:]...)
 	paq = append(paq, txProofLeafHash[:]...)
 	paq = append(paq, []byte{byte(txProofIndex)}...)//Warning: assuming txProofIndex always < byteSize

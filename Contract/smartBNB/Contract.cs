@@ -26,6 +26,10 @@ namespace smartBNB
         private static readonly BigInteger x_0 = 0;
         private static readonly BigInteger y_0 = 0;
 
+        private static readonly BigInteger Pcurve = BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007908834671663");
+        private static readonly BigInteger Acurve = 0;
+        private static readonly BigInteger N = BigInteger.Parse("115792089237316195423570985008687907852837564279074904382605163141518161494337");
+
         public static bool Main(string operation, params object[] args)
         {
             if (Runtime.Trigger == TriggerType.Application)
@@ -43,21 +47,17 @@ namespace smartBNB
 
         private static bool Validate(byte[] rawProof, byte[] rawHeader, byte[] rawSignatures)
         {
-            /*
-            // Verify relationship with the block
-            if (!AreEqual(rawHeader.Range(), rawSignatures.Range()))
+            // Verify relationship with the block. Compares if hDataHash and txProofRootHash are equal
+            // TODO: Remove this comparison and compare hDataHash with computed hash from proof on TxValidation
+            if (!AreEqual(rawHeader.Range(158, 32), rawProof.Range(32,32)))
                 throw new Exception("Relationship with the signed block cannot be verified");            
-            */
 
             // Verify signatures
-            bool isValidBlock = VerifyBlock(rawHeader, rawSignatures);
-            if (isValidBlock != true)
-                throw new Exception("cuck");
+            VerifyBlock(rawHeader, rawSignatures);
 
             // Verify merkle tree
-            bool isValidTx = VerifyTx(rawProof);
-            if (isValidTx != true)
-                throw new Exception("Proof is not internally consistent");
+            VerifyTx(rawProof);
+
             return true;
         }
 
@@ -79,7 +79,7 @@ namespace smartBNB
             byte[][] signatures = new byte[11][];
             for (int i = 0; i < 11; i++)
             {
-                signatures[i] = rawSignatures.Range(i*64, 64);
+                signatures[i] = rawSignatures.Range(i*32, 32);
             }
             /*
             if (!VerifySignatures(headerHash, signatures))
@@ -137,29 +137,114 @@ namespace smartBNB
             return new BigInteger[2] { x, y };
         }
 
+        /*
+        //BUGGY, NEED TO FIX
+        private static BigInteger[] EccMultiply(BigInteger xs, BigInteger ys, BigInteger Scalar)
+        {
+            if (Scalar == 0 || Scalar >= N)
+                throw new Exception("Invalid Scalar");
+
+            BigInteger Qx = xs;
+            BigInteger Qy = ys;
+
+            for (int i = GetBitsCount(Scalar) - 1; i >= 0; i--)
+            {
+                BigInteger[] resECdouble = ECdouble(Qx, Qy);
+                Qx = resECdouble[0];
+                Qy = resECdouble[1];
+                if (((Scalar >> i) & 1) == 1)
+                {
+                    BigInteger[] resECadd = ECadd(Qx, Qy, xs, ys);
+                    Qx = resECadd[0];
+                    Qy = resECadd[1];
+                }
+            }
+
+            return new BigInteger[2] { Qx, Qy };
+        }
+
+
+        private static int GetBitsCount(BigInteger n)
+        {
+            int count = 0;
+            while (n > 0)
+            {
+                n >>= 1;
+                count++;
+            }
+            return count;
+        }
+        */
+
+        private static BigInteger[] ECdouble(BigInteger xp, BigInteger yp)
+        {
+            BigInteger LamNumer = 3 * xp * xp + Acurve;
+            BigInteger LamDenom = 2 * yp;
+            BigInteger Lam = mod((LamNumer * ModInv(LamDenom, Pcurve)), Pcurve);
+            BigInteger xr = mod((Lam * Lam - 2 * xp), Pcurve);
+            BigInteger yr = mod((Lam * (xp - xr) - yp), Pcurve);
+            return new BigInteger[2] { xr, yr };
+        }
+
+        private static BigInteger[] ECadd(BigInteger xp, BigInteger yp, BigInteger xq, BigInteger yq)
+        {
+            BigInteger m = mod(((yq - yp) * ModInv(xq - xp, Pcurve)), Pcurve);
+            BigInteger xr = mod((m * m - xp - xq), Pcurve);
+            BigInteger yr = mod((m * (xp - xr) - yp), Pcurve);
+            return new BigInteger[2] { xr, yr };
+        }
+
+        private static BigInteger ModInv(BigInteger a, BigInteger n)
+        {
+            BigInteger lm = 1;
+            BigInteger hm = 0;
+            BigInteger low = mod(a, n); //a % n;
+            BigInteger high = n;
+            BigInteger ratio, nm, _new;
+            while (low > 1)
+            {
+                ratio = high / low;
+                nm = hm - lm * ratio;
+                _new = high - low * ratio;
+                BigInteger temp_lm = lm;
+                lm = nm;
+                BigInteger temp_low = low;
+                low = _new;
+                hm = temp_lm;
+                high = temp_low;
+            }
+
+            return mod(lm, n); //lm % n;
+        }
+
+        public static BigInteger mod(BigInteger x, BigInteger m)
+        {
+            BigInteger r = x % m;
+            return r < 0 ? r + m : r;
+        }
+
         private static bool VerifyTx(byte[] proof)
         {
-            byte[] blockDataHash = proof.Range(0, 64);
-            byte[] txProofRootHash = proof.Range(64, 64);
-            byte[] txProofLeafHash = proof.Range(128, 64);
-            int txProofIndex = proof.Range(192, 2)[0];
-            int txProofTotal = proof.Range(194, 2)[0];
+            byte[] txProofRootHash = proof.Range(0, 32); //TODO: remove this + reindex ranges on unpacking
+            byte[] txProofLeafHash = proof.Range(32, 32);
+            int txProofIndex = proof.Range(64, 1)[0];
+            int txProofTotal = proof.Range(65, 1)[0];
 
-            int len = proof.Range(196, proof.Length - 196).Length / 64;
+            int len = proof.Range(66, proof.Length - 66).Length / 32;
             byte[][] txProofAunts = new byte[len][];
             for (int i = 0; i < len; i++)
             {
-                txProofAunts[i] = proof.Range(196 + (i * 64), 64);
+                txProofAunts[i] = proof.Range(66 + (i * 32), 32);
             }
 
-            if (!AreEqual(blockDataHash, txProofRootHash))
-                throw new Exception("Proof matches different data hash");
             if (txProofIndex < 0)
                 throw new Exception("Proof index cannot be negative");
             if (txProofTotal <= 0)
                 throw new Exception("Proof total must be positive");
 
+
             byte[] computedHash = ComputeHashFromAunts(txProofIndex, txProofTotal, txProofLeafHash, txProofAunts);
+            //TODO: change txProofRootHash for hDataHash get from Header
             if (!AreEqual(computedHash, txProofRootHash))
                 throw new Exception("Invalid root hash");
 
@@ -168,7 +253,7 @@ namespace smartBNB
 
         private static byte[] ComputeHashFromAunts(int index, int total, byte[] leafHash, byte[][] innerHashes)
         {
-            if (index >= total || index < 0 || total <= 0)
+            if (index >= total)
                 return null;
 
             switch (total)
@@ -209,28 +294,7 @@ namespace smartBNB
             if (length < 1)
                 throw new Exception("Trying to split a tree with size < 1");
 
-            uint uLength = (uint)length;
-
-            int bitlen = (int)GetBitsCount(uLength);
-
-            int k = 1 << (bitlen - 1);
-            if (k == length)
-            {
-                k >>= 1;
-            }
-            return k;
-        }
-
-        // returns the number of significant bits in n
-        private static uint GetBitsCount(uint n)
-        {
-            uint count = 0;
-            while (n > 0)
-            {
-                count += 1;
-                n >>= 1;
-            }
-            return count;
+            return (length % 2 == 0) ? length / 2 : (length + 1) / 2;
         }
 
         // returns Sha256(0x01 || left || right)
@@ -266,9 +330,9 @@ namespace smartBNB
         // returns the byte arrays located between indexes ini and fin (both included)
         private static byte[][] TakeArrays(byte[][] arr, int ini, int fin)
         {
-            int len = (fin - ini);
+            int len = (fin - ini)+1;
             byte[][] cutted = new byte[len][];
-            for (int i = 0; i <= len; i++)
+            for (int i = 0; i < len; i++)
             {
                 cutted[i] = arr[ini+i];
             }
@@ -285,7 +349,7 @@ namespace smartBNB
                     return LeafHash(slices[0]);
                 default:
                     int k = GetSplitPoint(slices.Length);
-                    byte[] left = SimpleHashFromByteSlices(TakeArrays(slices, 0, k));
+                    byte[] left = SimpleHashFromByteSlices(TakeArrays(slices, 0, k-1));
                     byte[] right = SimpleHashFromByteSlices(TakeArrays(slices, k, slices.Length-1));
                     return InnerHash(left, right);
             }
