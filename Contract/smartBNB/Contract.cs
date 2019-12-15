@@ -10,26 +10,6 @@ namespace smartBNB
         private static readonly byte[] leafPrefix = { 0x00 };
         private static readonly byte[] innerPrefix = { 0x01 };
 
-        // secp256k1 is defined in the ring Z/pZ
-        private static readonly BigInteger p = BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007908834671663");
-        // y^2 = x^3 + 7
-        private static readonly BigInteger a = 0;
-
-        private static readonly BigInteger b = 7;
-        // https://en.bitcoin.it/wiki/Secp256k1
-        // https://bitcointalk.org/index.php?topic=237260.0
-        private static readonly BigInteger n = BigInteger.Parse("115792089237316195423570985008687907852837564279074904382605163141518161494337");
-        private static readonly BigInteger G_x = BigInteger.Parse("55066263022277343669578718895168534326250603453777594175500187360389116729240");
-        private static readonly BigInteger G_y = BigInteger.Parse("32670510020758816978083085130507043184471273380659243275938904335757337482424");
-        private static readonly BigInteger L_n = 256; // bit length of n
-                                                      // Calculated using the fact that n*G=O
-        private static readonly BigInteger x_0 = 0;
-        private static readonly BigInteger y_0 = 0;
-
-        private static readonly BigInteger Pcurve = BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007908834671663");
-        private static readonly BigInteger Acurve = 0;
-        private static readonly BigInteger N = BigInteger.Parse("115792089237316195423570985008687907852837564279074904382605163141518161494337");
-
         public static bool Main(string operation, params object[] args)
         {
             if (Runtime.Trigger == TriggerType.Application)
@@ -87,140 +67,6 @@ namespace smartBNB
             */
 
             return true;
-        }
-
-        // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
-        // inverse_s needs to be calculated by the contract caller
-        private static bool VerifyECSDA(BigInteger r, BigInteger s, byte[] message, BigInteger pubkey_x, BigInteger pubkey_y, BigInteger inverse_s)
-        {
-            // Verify public key is valid
-
-            // Verify signature coordinates
-            if (r <= 0 || r >= n || s <= 0 || s >= n)
-            { // r,s \in [1, n-1]
-                return false;
-            }
-            BigInteger e = SHA256(message);
-            BigInteger z = e; // Nothing to be done as e's bit length is 256 == L_n
-            if (((s * inverse_s) % n) != 1)
-            { // Verify inverse_s is correct
-                return false;
-            }
-            BigInteger u1 = (z * inverse_s) % n;
-
-            BigInteger u2 = (r * inverse_s) % n;
-            // The following part (sum of scalar point multiplications) can be optimized further using some math but I chose code correctness over cost
-            BigInteger[] mul1 = ScalarMultECC(G_x, G_y, u1);
-
-            BigInteger[] mul2 = ScalarMultECC(pubkey_x, pubkey_y, u2);
-
-            BigInteger x1 = mul1[0] + mul2[0];
-            BigInteger y1 = mul1[1] + mul2[1];
-            if (x1 == x_0 && y1 == y_0)
-            { //Check if (x1, y1) == O
-                return false;
-            }
-            if (r == (x1 % n))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        // https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Point_multiplication
-        private static BigInteger[] ScalarMultECC(BigInteger x, BigInteger y, BigInteger k)
-        {
-            BigInteger x1, y2;
-            return new BigInteger[2] { x, y };
-        }
-
-        /*
-        //BUGGY, NEED TO FIX
-        private static BigInteger[] EccMultiply(BigInteger xs, BigInteger ys, BigInteger Scalar)
-        {
-            if (Scalar == 0 || Scalar >= N)
-                throw new Exception("Invalid Scalar");
-
-            BigInteger Qx = xs;
-            BigInteger Qy = ys;
-
-            for (int i = GetBitsCount(Scalar) - 1; i >= 0; i--)
-            {
-                BigInteger[] resECdouble = ECdouble(Qx, Qy);
-                Qx = resECdouble[0];
-                Qy = resECdouble[1];
-                if (((Scalar >> i) & 1) == 1)
-                {
-                    BigInteger[] resECadd = ECadd(Qx, Qy, xs, ys);
-                    Qx = resECadd[0];
-                    Qy = resECadd[1];
-                }
-            }
-
-            return new BigInteger[2] { Qx, Qy };
-        }
-
-
-        private static int GetBitsCount(BigInteger n)
-        {
-            int count = 0;
-            while (n > 0)
-            {
-                n >>= 1;
-                count++;
-            }
-            return count;
-        }
-        */
-
-        private static BigInteger[] ECdouble(BigInteger xp, BigInteger yp)
-        {
-            BigInteger LamNumer = 3 * xp * xp + Acurve;
-            BigInteger LamDenom = 2 * yp;
-            BigInteger Lam = mod((LamNumer * ModInv(LamDenom, Pcurve)), Pcurve);
-            BigInteger xr = mod((Lam * Lam - 2 * xp), Pcurve);
-            BigInteger yr = mod((Lam * (xp - xr) - yp), Pcurve);
-            return new BigInteger[2] { xr, yr };
-        }
-
-        private static BigInteger[] ECadd(BigInteger xp, BigInteger yp, BigInteger xq, BigInteger yq)
-        {
-            BigInteger m = mod(((yq - yp) * ModInv(xq - xp, Pcurve)), Pcurve);
-            BigInteger xr = mod((m * m - xp - xq), Pcurve);
-            BigInteger yr = mod((m * (xp - xr) - yp), Pcurve);
-            return new BigInteger[2] { xr, yr };
-        }
-
-        private static BigInteger ModInv(BigInteger a, BigInteger n)
-        {
-            BigInteger lm = 1;
-            BigInteger hm = 0;
-            BigInteger low = mod(a, n); //a % n;
-            BigInteger high = n;
-            BigInteger ratio, nm, _new;
-            while (low > 1)
-            {
-                ratio = high / low;
-                nm = hm - lm * ratio;
-                _new = high - low * ratio;
-                BigInteger temp_lm = lm;
-                lm = nm;
-                BigInteger temp_low = low;
-                low = _new;
-                hm = temp_lm;
-                high = temp_low;
-            }
-
-            return mod(lm, n); //lm % n;
-        }
-
-        public static BigInteger mod(BigInteger x, BigInteger m)
-        {
-            BigInteger r = x % m;
-            return r < 0 ? r + m : r;
         }
 
         private static bool VerifyTx(byte[] proof)
@@ -360,6 +206,74 @@ namespace smartBNB
             // Implemented by NEOVM, see bytecode 0xA8 on https://docs.neo.org/developerguide/en/articles/neo_vm.html
             // https://docs.neo.org/docs/en-us/reference/scapi/fw/dotnet.html
             return Sha256(message).AsBigInteger();
+        }
+        
+        private static BigInteger[] EdDSA_PointAdd(BigInteger[] P, BigInteger[] Q, BigInteger p, BigInteger  d)
+        {	
+            BigInteger A = mulmod(modPositive(P[1]-P[0], p) , modPositive(Q[1]-Q[0], p), p);
+            BigInteger B = mulmod(modsum(P[1],P[0], p), modsum(Q[1],Q[0], p), p);
+            BigInteger C = mulmod(mulmod(modsum(P[3], P[3], p) , Q[3], p), d, p);
+            BigInteger D = mulmod(modsum(P[2],P[2], p) , Q[2], p);
+
+            BigInteger E= modPositive(B-A, p);
+            BigInteger F= modPositive(D-C, p);
+            BigInteger G= modsum(D,C, p);
+            BigInteger H = modsum(B,A, p);
+
+            BigInteger EF = mulmod(E,F,p);
+            //BigInteger EF = E*F;
+            BigInteger GH = mulmod(G,H,p);
+            BigInteger FG = mulmod(F,G,p);
+            BigInteger EH = mulmod(E,H,p);
+
+
+            return new BigInteger[4] { EF, GH, FG, EH };
+        }
+	
+		// To compute (a * b) % mod  
+        private static BigInteger mulmod(BigInteger a, BigInteger b, BigInteger mod)  
+        {  
+            BigInteger res = 0; // Initialize result  
+
+            while (b > 0)  
+            {  
+                // If b is odd, add 'a' to result  
+                if (b % 2 == 1)  
+                {  
+                    //res = (res + a) % mod;
+                    res = modsum(res, a, mod);
+                }  
+
+                // Multiply 'a' with 2  
+                //a = (a * 2) % mod;  
+                a = modsum(a, a, mod);
+
+                // Divide b by 2  
+                b /= 2;  
+            }  
+
+            // Return result  
+            return res;  
+        }
+	
+        private static BigInteger modsum(BigInteger a, BigInteger b, BigInteger p)
+        {
+            BigInteger k = (a-p)+b;
+            if (k<0){
+                k+=p;
+            }
+            return k;
+        }
+
+        private static BigInteger modrest(BigInteger a, BigInteger b, BigInteger p)
+        {
+            BigInteger r = a-b;
+            return r < 0 ? r + p : r;
+        }
+
+        private static BigInteger modPositive(BigInteger x, BigInteger m)
+        {
+            return x < 0 ? x + m : x;
         }
 
     }
