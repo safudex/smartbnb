@@ -207,6 +207,24 @@ namespace smartBNB
             // https://docs.neo.org/docs/en-us/reference/scapi/fw/dotnet.html
             return Sha256(message).AsBigInteger();
         }
+
+   		private static BigInteger sha512mod(ulong[] num){
+			byte[] byteQ = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
+			BigInteger q = byteQ.AsBigInteger();
+
+			BigInteger res = 0;
+			BigInteger powers = 1;
+			for(int i=0; i<8; i++){
+				for(int j=0; j<64; j++){
+					if((num[i] & 1) == 1){
+						res = modsum(res, powers, q);
+					}
+					num[i] = num[i] >> 1;
+					powers = modsum(powers, powers, q);
+				}
+			}
+			return res;
+		}
         
         private static BigInteger[] EdDSA_PointAdd(BigInteger[] P, BigInteger[] Q, BigInteger p, BigInteger  d)
         {	
