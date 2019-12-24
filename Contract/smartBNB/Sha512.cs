@@ -190,6 +190,16 @@ namespace Neo.SmartContract
             a = (T1 + T2)&v;
         }
         
+        ulong[] hash = new ulong[8];
+        hash[0] = (a+H[0])&v;
+        hash[1] = (b+H[1])&v;
+        hash[2] = (c+H[2])&v;
+        hash[3] = (d+H[3])&v;
+        hash[4] = (e+H[4])&v;
+        hash[5] = (f+H[5])&v;
+        hash[6] = (g+H[6])&v;
+        hash[7] = (h+H[7])&v;
+        
             return false;
         }
 
