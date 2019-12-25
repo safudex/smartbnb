@@ -426,21 +426,11 @@ namespace smartBNB
             K[77] = 6448918945643986474;
             K[78] = 6902733635092675308;
             K[79] = 7801388544844847127;
-            
-            byte[] byteV = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00};
+           
+            byte[] byteV = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,};
             ulong v = (ulong)byteV.AsBigInteger();
-    
+   
             ulong[] W = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            for (int i = 0; i < 16; i++)
-            {
-                W[i] = pre[i];
-            }
-            
-            for (int i = 16; i < 80; i++)
-            {
-                W[i] = (sig1(W[i - 2]) + W[i - 7] + sig0(W[i - 15]) + W[i - 16])&v;
-            }
-    
             ulong[] H = new ulong[8];
             H[0] = 7640891576956012808;
             H[1] = 13503953896175478587;
@@ -450,6 +440,7 @@ namespace smartBNB
             H[5] = 11170449401992604703;
             H[6] = 2270897969802886507;
             H[7] = 6620516959819538809;
+           
             ulong a = H[0];
             ulong b = H[1];
             ulong c = H[2];
@@ -460,31 +451,65 @@ namespace smartBNB
             ulong h = H[7];
             ulong T1=0;
             ulong T2=0;
-    
-            for (int i = 0; i < 80; i++)
+           
+            for(int j =0; j<pre.Length/16;j++)
             {
-                T1 = (h + sum1(e) + Ch(e, f, g) + K[i] + W[i])&v;
-                T2 = (sum0(a) + Maj(a, b, c))&v;
-                h = g;
-                g = f;
-                f = e;
-                e = (d + T1)&v;
-                d = c;
-                c = b;
-                b = a;
-                a = (T1 + T2)&v;
+                a = H[0];
+                b = H[1];
+                c = H[2];
+                d = H[3];
+                e = H[4];
+                f = H[5];
+                g = H[6];
+                h = H[7];
+                for (int i = 0; i < 16; i++)
+                {
+                    W[i] = pre[(j*16)+i] & v;
+                }
+
+                for (int i = 16; i < 80; i++)
+                {
+                    W[i] = (sig1(W[i - 2]) + W[i - 7] + sig0(W[i - 15]) + W[i - 16])&v;
+                }
+
+                for (int i = 0; i < 80; i++)
+                {
+                    T1 = (h + sum1(e) + Ch(e, f, g) + K[i] + W[i])&v;
+                    T2 = (sum0(a) + Maj(a, b, c))&v;
+                    h = g;
+                    g = f;
+                    f = e;
+                    e = (d + T1)&v;
+                    d = c;
+                    c = b;
+                    b = a;
+                    a = (T1 + T2)&v;
+                    
+                  
+                }
+                
+                H[0] = (a+H[0])&v;
+                H[1] = (b+H[1])&v;
+                H[2] = (c+H[2])&v;
+                H[3] = (d+H[3])&v;
+                H[4] = (e+H[4])&v;
+                H[5] = (f+H[5])&v;
+                H[6] = (g+H[6])&v;
+                H[7] = (h+H[7])&v;
+           
             }
-       
-            ulong[] hash = new ulong[8];
-            hash[0] = (h+H[7])&v;
-            hash[1] = (g+H[6])&v;
-            hash[2] = (f+H[5])&v;
-            hash[3] = (e+H[4])&v;
-            hash[4] = (d+H[3])&v;
-            hash[5] = (c+H[2])&v;
-            hash[6] = (b+H[1])&v;
-            hash[7] = (a+H[0])&v;
+            //final hash is stored in H
             
+            ulong[] hash = new ulong[8];
+            hash[0] = H[7];
+            hash[1] = H[6];
+            hash[2] = H[5];
+            hash[3] = H[4];
+            hash[4] = H[3];
+            hash[5] = H[2];
+            hash[6] = H[1];
+            hash[7] = H[0];
+           
             return sha512mod(hash);
         }
 
