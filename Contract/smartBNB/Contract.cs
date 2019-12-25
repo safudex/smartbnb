@@ -249,9 +249,32 @@ namespace smartBNB
 
             return new BigInteger[4] { EF, GH, FG, EH };
         }
-	
+
 		// To compute (a * b) % mod  
-        private static BigInteger mulmod(BigInteger a, BigInteger b, BigInteger mod)  
+		private static BigInteger mulmod(BigInteger a, BigInteger b, BigInteger p){
+            byte[] bytePower127 = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+            BigInteger power127 = bytePower127.AsBigInteger();
+            BigInteger power128 = power127 * 2;
+            BigInteger lowA = a%power128;
+            BigInteger lowB = b%power127;
+            BigInteger highA = a/power128;
+            BigInteger highB = b/power127;
+            BigInteger low = (lowA*lowB)%p;
+            BigInteger high = (highA*highB)%p;
+            BigInteger medium1 = ((lowA/2)*highB)%p;
+            BigInteger medium2 = (lowB*highA)%p;
+            BigInteger medium = modsum(medium1, medium2, p);
+            medium = modsum(medium, medium, p);
+            if(lowA%2 == 1){
+                medium = modsum(medium, highB, p);
+            }
+            low = modsum(low, ((medium%power128)*power127)%p, p);
+            high = modsum(high, medium/power128, p);
+            high = mulmod256(high, 19, p);
+            return modsum(high, low, p);
+        }
+	
+        private static BigInteger mulmod256(BigInteger a, BigInteger b, BigInteger mod)  
         {  
             BigInteger res = 0; // Initialize result  
 
