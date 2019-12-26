@@ -12,7 +12,7 @@ def num2byteArray(num):
 
 def reverseNum(n):
     h = hex(n)
-    h = "0"+h if (len(hex)%2==1) else h
+    h = "0"+h if (len(h)%2==1) else h
     hr = [h[i: i+2] for i in range(0, len(h), 2)]
     hr.reverse()
     return "".join(hr)
