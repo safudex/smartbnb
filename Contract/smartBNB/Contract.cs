@@ -535,6 +535,58 @@ namespace smartBNB
            
             return sha512mod(hash);
         }
+	
+	/**
+	usage example
+	int ini = 9;
+	int fin = 88;
+
+	//pre = 0aaaaaaaabc00...0024
+	ulong[] pre = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24 };
+	pre[0]=27410143614427489;
+	pre[1]=7017280570803617792;
+
+	byte[] bytes = "aaaaaaaabc".AsByteArray();
+
+	bool res = checkBytes(pre, bytes, ini, fin);
+	*/
+	public static bool checkBytes(ulong[] pre, byte[] bytes, int ini, int fin)
+        {
+            if(bytes.Length!=((fin-ini)+1)/8)
+                return false;
+
+            ulong val = pre[(fin - 1) / 64];
+            
+            byte byt = bytes[bytes.Length-1];
+            
+            ulong itmsg = ((ulong)1)<<(64 - (fin - 64));
+            ulong itbyt = 1;
+            
+            for (int i=0; i<(fin - ini); i++)
+            {
+                if ((64-(fin%64)+i) % 64 == 0 & i != 0)
+                {
+                    val = pre[((fin - 1) / 64)-((64 - (fin % 64) + i) / 64)];
+                    itmsg = 1;
+                }
+
+                if (i % 8 == 0)
+                {
+                    byt = bytes[((bytes.Length*8-i) / 8)-1];
+                    itbyt = 1;
+                }
+
+                if(((byt & itbyt)>>(i%8)) == ((val & itmsg)>> ((64 - (fin - 64-i))%64)))
+                {
+                    itbyt = itbyt << 1;
+                    itmsg = itmsg << 1;
+                }
+                else
+                    return false;
+      
+            }
+            return true;
+        }
 
     }
 }
