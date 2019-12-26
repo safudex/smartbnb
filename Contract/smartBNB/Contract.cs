@@ -249,6 +249,19 @@ namespace smartBNB
 
             return new BigInteger[4] { EF, GH, FG, EH };
         }
+	
+	private static BigInteger[] EdDSA_PointMul(BigInteger s, BigInteger[] P, BigInteger p, BigInteger d)
+        {
+            BigInteger[] Q = { 0, 1, 1, 0 };
+            while(s>0)
+            {
+                if ((s%2)==1)
+                    Q = EdDSA_PointAdd(Q, P, p, d);
+                P = EdDSA_PointAdd(P, P, p, d);
+                s = s / 2;
+            }
+            return Q;
+        }
 
 		// To compute (a * b) % mod  
 		private static BigInteger mulmod(BigInteger a, BigInteger b, BigInteger p){
