@@ -602,6 +602,15 @@ namespace smartBNB
             }
             return true;
         }
+	
+	private static bool point_equal(BigInteger[] P, BigInteger[] Q, BigInteger p)
+        {
+            if (modrest(mulmod(P[0], Q[2], p), mulmod(Q[0], P[2], p), p) != 0)
+                return false;
+            if (modrest(mulmod(P[1], Q[2], p), mulmod(Q[1], P[2], p), p) != 0)
+                return false;
+            return true;
+        }
 
     }
 }
