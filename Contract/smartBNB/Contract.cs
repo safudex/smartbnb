@@ -217,12 +217,14 @@ namespace smartBNB
 			BigInteger res = 0;
 			BigInteger powers = 1;
 			for(int i=0; i<8; i++){
-				for(int j=0; j<64; j++){
-					if((num[i] & 1) == 1){
-						res = modsum(res, powers, q);
-					}
-					num[i] = num[i] >> 1;
-					powers = modsum(powers, powers, q);
+				for(int j=0; j<8; j++){
+				    for(int k =0; k<8; k++){
+    					if(((num[i]>>(56+k)) & 1) == 1){
+    						res = modsum(res, powers, q);
+    					}
+    					powers = modsum(powers, powers, q);
+				    }
+				    num[i] = num[i] << 8;
 				}
 			}
 			return res;
