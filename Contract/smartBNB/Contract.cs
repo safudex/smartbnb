@@ -666,6 +666,39 @@ namespace smartBNB
             
             return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
         }
+	
+	private static bool checkCompressed(BigInteger x, BigInteger y, byte[] compressed, BigInteger p){
+            if(x<0 || x>=p){
+                return false;
+            }
+            if(y<0 || y>=p){
+                return false;
+            }
+            //Check that point belongs in the curve
+            BigInteger x2 = mulmod(x, x, p);
+            BigInteger y2 = mulmod(y, y, p);
+            //((-x**2+y**2-1)*121666)%p==(-121665*x**2*y**2)%p
+            if(mulmod(((modrest(y2, x2, p)-1)%p), 121666, p) != mulmod(p-121665, mulmod(x2, y2, p), p)){
+                return false; //Point doesn't belong in the curve
+            }
+            //int.to_bytes(y | ((x & 1) << 255), 32, "little")
+            int sign = compressed[31] & 0x80;
+            if((sign>>7) != (x%2)){
+                return false; //Compressed is wrong
+            }
+            
+            int index31 = 31;
+            byte withSign = compressed[31];
+            byte noSign = (byte)(compressed[31] & 0x7F);
+            compressed[index31] = noSign;
+            if(compressed.AsBigInteger() != y){
+                return false;
+            }
+            
+            compressed[index31] = withSign;
+            
+            return true;
+        }
 
     }
 }
