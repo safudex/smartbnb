@@ -210,25 +210,26 @@ namespace smartBNB
             return Sha256(message).AsBigInteger();
         }
 
-   		private static BigInteger sha512mod(ulong[] num){
-			byte[] byteQ = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
-			BigInteger q = byteQ.AsBigInteger();
+	private static BigInteger sha512modq(ulong[] num)
+	{
+		byte[] byteQ = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
+		BigInteger q = byteQ.AsBigInteger();
 
-			BigInteger res = 0;
-			BigInteger powers = 1;
-			for(int i=0; i<8; i++){
-				for(int j=0; j<8; j++){
-				    for(int k =0; k<8; k++){
-    					if(((num[i]>>(56+k)) & 1) == 1){
-    						res = modsum(res, powers, q);
-    					}
-    					powers = modsum(powers, powers, q);
-				    }
-				    num[i] = num[i] << 8;
+		BigInteger res = 0;
+		BigInteger powers = 1;
+		for(int i=0; i<8; i++){
+			for(int j=0; j<8; j++){
+			    for(int k =0; k<8; k++){
+				if(((num[i]>>(56+k)) & 1) == 1){
+					res = modsum(res, powers, q);
 				}
+				powers = modsum(powers, powers, q);
+			    }
+			    num[i] = num[i] << 8;
 			}
-			return res;
 		}
+		return res;
+	}
         
         private static BigInteger[] EdDSA_PointAdd(BigInteger[] P, BigInteger[] Q, BigInteger p, BigInteger  d)
         {	
@@ -403,7 +404,7 @@ namespace smartBNB
             return res;
         }
 	
-	private static BigInteger sha512_modq(ulong[] pre)
+	private static ulong[] sha512(ulong[] pre)
         {
             /** arg example
             ulong[] pre = { 7017280570803617792, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24 };
@@ -562,19 +563,8 @@ namespace smartBNB
                 H[7] = (h+H[7])&v;
            
             }
-            //final hash is stored in H
-            
-            ulong[] hash = new ulong[8];
-            hash[0] = H[7];
-            hash[1] = H[6];
-            hash[2] = H[5];
-            hash[3] = H[4];
-            hash[4] = H[3];
-            hash[5] = H[2];
-            hash[6] = H[1];
-            hash[7] = H[0];
-           
-            return sha512mod(hash);
+
+            return H;
         }
 	
 	/**
@@ -681,8 +671,8 @@ namespace smartBNB
                 throw new Exception("Wrong padded message");
             }
 
-            BigInteger h = sha512_modq(pre);
-            Storage.Put("h", h);
+            ulong[] hash = sha512(pre);
+            BigInteger h = sha512modq(hash);
 
             byte[] g1bytes = {0x1a, 0xd5, 0x25, 0x8f, 0x60, 0x2d, 0x56, 0xc9, 0xb2, 0xa7, 0x25, 0x95, 0x60, 0xc7, 0x2c, 0x69, 0x5c, 0xdc, 0xd6, 0xfd, 0x31, 0xe2, 0xa4, 0xc0, 0xfe, 0x53, 0x6e, 0xcd, 0xd3, 0x36, 0x69, 0x21};
             BigInteger g1 = g1bytes.AsBigInteger();
