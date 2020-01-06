@@ -638,23 +638,23 @@ namespace smartBNB
             return true;
         }
 	
-	private static bool verify_signature(BigInteger A0_xPubK, BigInteger A1_yPubK, byte[] pubK, byte[] s_signatureLow,
-            byte[] Rs_signatureHigh, BigInteger R0_xSigHigh, BigInteger R1_ySigHigh, ulong[] pre, byte[] signBytes, int sB_ini, int sB_fin, byte[] blockHash){
+	private static bool verify_signature(BigInteger A0_xPubK, BigInteger A1_yPubK, byte[] pubK, byte[] signature, BigInteger R0_xSigHigh, BigInteger R1_ySigHigh, ulong[] pre, byte[] signBytes, byte[] blockHash)
+	{
             byte[] byteP = {0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
-			BigInteger p = byteP.AsBigInteger();
-			
-			byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
-			BigInteger d = byteD.AsBigInteger();
-        
-            if (pubK.Length != 32)
-                throw new Exception("Bad public key length");
-                
+            BigInteger p = byteP.AsBigInteger();
+
+            byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
+            BigInteger d = byteD.AsBigInteger();
+            
+            byte[] Rs_signatureHigh = signature.Range(0, 32);
+            byte[] s_signatureLow = signature.Range(32, 32);
+            
             if ((s_signatureLow.Length+Rs_signatureHigh.Length)!=64)
                 throw new Exception("Bad signature length");
-                
+               
             if (!checkCompressed(A0_xPubK, A1_yPubK, pubK, p))
                 throw new Exception("Relationship between compressed and decompressed public key not found");
-            
+             
             //BigInteger Rs = Rs_signatureHigh.AsBigInteger();
             if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
                 throw new Exception("Relationship between compressed and decompressed public key not found");
@@ -662,7 +662,7 @@ namespace smartBNB
             byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
             BigInteger q = q_bytes.AsBigInteger();
             BigInteger s = s_signatureLow.AsBigInteger();
-            if (s>=q)
+            if (s>=q || s<0)
                 return false;
             
             for (int i=0; i<32;i++)
@@ -670,11 +670,20 @@ namespace smartBNB
                 if(blockHash[i]!=signBytes[80+i])
                     throw new Exception("Hash not contained in signBytes");
             }
-            if (!checkBytes(pre, signBytes, sB_ini, sB_fin))
+            
+            for (int i=0; i<32;i++)
+            {
+                if(pubK[i]!=signBytes[32+i])
+                    throw new Exception("Hash not contained in signBytes");
+            }
+
+            if (!checkBytes(pre, signBytes, 1, (int)pre[pre.Length-1])){
                 throw new Exception("Wrong padded message");
-            
+            }
+
             BigInteger h = sha512_modq(pre);
-            
+            Storage.Put("h", h);
+
             byte[] g1bytes = {0x1a, 0xd5, 0x25, 0x8f, 0x60, 0x2d, 0x56, 0xc9, 0xb2, 0xa7, 0x25, 0x95, 0x60, 0xc7, 0x2c, 0x69, 0x5c, 0xdc, 0xd6, 0xfd, 0x31, 0xe2, 0xa4, 0xc0, 0xfe, 0x53, 0x6e, 0xcd, 0xd3, 0x36, 0x69, 0x21};
             BigInteger g1 = g1bytes.AsBigInteger();
             byte[] g2bytes = {0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66};
@@ -686,11 +695,14 @@ namespace smartBNB
             BigInteger[] A = {A0_xPubK, A1_yPubK, 1, mulmod(A0_xPubK, A1_yPubK, p)};
             
             BigInteger[] sB = EdDSA_PointMul(s, G, p, d);
+
             BigInteger[] hA = EdDSA_PointMul(h, A, p, d);
             
 			BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
+			
+			bool isSigOK = point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
             
-            return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
+            return isSigOK;
         }
 	
 	private static bool checkCompressed(BigInteger x, BigInteger y, byte[] compressed, BigInteger p){
