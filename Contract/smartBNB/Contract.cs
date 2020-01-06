@@ -264,6 +264,32 @@ namespace smartBNB
             }
             return Q;
         }
+	
+	struct PointMulStep
+        {
+            public BigInteger[] Q;
+            public BigInteger s;
+            public BigInteger[] P;
+        }
+        
+        private static PointMulStep EdDSA_PointMul_step(PointMulStep step, BigInteger p, BigInteger d)
+        {
+            if ((step.s%2)==1)
+                step.Q = EdDSA_PointAdd(step.Q, step.P, p, d);
+            step.P = EdDSA_PointAdd(step.P, step.P, p, d);
+            step.s = step.s / 2;
+            return step;
+        }
+        
+        private static PointMulStep EdDSA_PointMul_ByRange(PointMulStep initialStep, int ini, int fin, BigInteger p, BigInteger d)
+        {
+            PointMulStep stepRecord = initialStep;
+            for (int i=ini; i<fin; i++)
+            {
+                stepRecord = EdDSA_PointMul_step(stepRecord, p, d);
+            }
+            return stepRecord;
+        }
 
 	// To compute (a * b) % mod  
 	private static BigInteger mulmod(BigInteger a, BigInteger b, BigInteger p){
