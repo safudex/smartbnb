@@ -92,8 +92,55 @@ def getXY(point):
 	print(r[1])
 	print(num2byteArray(int(point, 16)))
 
+# Base field Z_p
+p = 2**255 - 19
+
+def modp_inv(x):
+    return pow(x, p-2, p)
+
+# Curve constant
+d = -121665 * modp_inv(121666) % p
+
+def point_add(P, Q):
+    A, B = (P[1]-P[0]) * (Q[1]-Q[0]) % p, (P[1]+P[0]) * (Q[1]+Q[0]) % p;
+    C, D = 2 * P[3] * Q[3] * d % p, 2 * P[2] * Q[2] % p;
+    E, F, G, H = B-A, D-C, D+C, B+A;
+    return (E*F, G*H, F*G, E*H);
+
+# Computes Q = s * Q
+def point_mul(s, P):
+	Q = (0, 1, 1, 0)  # Neutral element
+	while s > 0:
+		if s & 1:
+			Q = point_add(Q, P)
+		P = point_add(P, P)
+		s >>= 1
+	return Q
+
+def point_mul_step(s, P, Q):
+	if s & 1:
+		Q = point_add(Q, P)
+	P = point_add(P, P)
+	s >>= 1
+	return s, P, Q
+
+def point_mul_by_it(s, P, Q, its):
+	for i in range(its):
+		s, P, Q = point_mul_step(s, P, Q)
+	return s, P, Q
+
+
 op = sys.argv[1] 
 if op == "1":
 	getXY(sys.argv[2])
 elif op == "2":
 	padMsg(hexString2byteArray(sys.argv[2]))
+'''
+# Base point
+g_y = 4 * modp_inv(5) % p
+g_x = recover_x(g_y, 0)
+G = (g_x, g_y, 1, g_x * g_y % p)
+signature = "11fd72472aba93cfc207acd5b948badf2c35da2d5b2b2a9623265fd57670f51062e0201f5314f51fd4848b0bc958d15f1fa6f7ab90af7179be545086071ba501"
+s = int.from_bytes(bytes.fromhex(signature[32:]), "little")
+print(point_mul_by_it(s, G, (0, 1, 1, 0), 10)[0])
+'''
