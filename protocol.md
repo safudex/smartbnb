@@ -50,12 +50,17 @@ In the BNC to NEO port, the following protocol will replace steps 1, 2 and 3 of 
 6. Go to step 3
 
 **Note**: A possible value for P is 200, as that value would be enough to compensate any of the parties for the costs incurred when verifying the proof (the maxium GAS spent by either party is capped at 130) while providing some extra GAS that would act as an incentive for Fishers to challenge faulty proofs and a deterrent against actors that would submit invalid proofs or challenges.
+
 **Note**: The reason why the protocol enables the creation of other challenges after a challenge has been completed is that doing so prevents an attack where a Fisher affiliated with Collat opens a challenge and purposedly sends a faulty proof, making Collat win the challenge and preventing other challeges on the same deposit. This would result in Collat losing ~240 GAS but managing to steal a deposit without having to face any penalty.
+
 **Warning**: A mechanism should be put in place to make sure that users don't send new bnb while other bnb has been sent but it hasn't been acknoweledged in the contract, leading to undercollaterization. One way of doing this is by having clients calculate the maximum amount that they can send to Collat as `collateral/alpha-(SBNB in circulation + collateral temporarily locked)`. Users must alo make sure that the punishment deposits are not all locked in open challenges, although a user can choose to forfeit that restriction at his expense. 
+
 **Note on picking X values**: The values picked should be large in order to allow the party that should take action to defend itself against DoS attacks against their node and/or against the blockchain (even tho flooding the blockchain with transactions is only a viable strategy if the values of X are really low). An initial proposed value for all X is 24 hours, but the selection of this number has been totally arbitrary and could be improved a lot by analysing data.
+
 **Note on picking f**: A simple function that could accomplish the goal of preventing DoS attacks would be €f(x)=max(x/100, 1)€, which would punish two types of attacks:
 - Attacks based on temporarily locking a large amount of collateral by requesting a large deposit, exhausting all the unlocked collateral that a custodian has available and preventing other users from creating new SBNB with them temporarily.
 - Attacks that attempt to exhaust the punishment deposits of Collat by requesting the porting of really small amounts of SBNB, which will lock all the punishment deposits of Collat and achieve the same result as the previous attack. This attack can be further prevented by only allowing the porting of a minimum amount of BNB (smaller amounts than the minimum may be allowed but those may require the locking of a punishment deposit).
+
 This function has been chosen without any research backing it and therefore can be improved massively, in the future it will need to be tweaked in order to prevent attacks that may temporarily disable the creation of new SBNB.
 
 ## NEO -> BNC
