@@ -865,7 +865,7 @@ namespace smartBNB
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
             ulong[] pre = challengeVars.pre[0];
-            ulong[] hash = (challengeVars.hash[0];
+            ulong[] hash = challengeVars.hash[0];
             
             ulong[] expectedHash = sha512(pre);
             
@@ -877,7 +877,7 @@ namespace smartBNB
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
             ulong[] pre = challengeVars.pre[0];
-            ulong[] hash = (challengeVars.hash[0];
+            ulong[] hash = challengeVars.hash[0];
             BigInteger mod = challengeVars.preHashMod[0];
             
             BigInteger expectedMod = sha512modq(hash);
