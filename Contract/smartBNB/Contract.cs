@@ -884,6 +884,20 @@ namespace smartBNB
             
             return (expectedMod==mod);
         }
+        
+        private static bool ChallengePointEqual(BigInteger p, BigInteger d)
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
+            BigInteger[] sB = challengeVars.sB[0];
+            BigInteger[] hA = challengeVars.hA[0];
+            BigInteger R0_xSigHigh = challengeVars.R0_xSigHigh[0];
+            BigInteger R1_ySigHigh = challengeVars.R1_ySigHigh[0];
+
+            BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
+
+            return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
+        }
 
     }
 }
