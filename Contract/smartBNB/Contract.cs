@@ -300,10 +300,10 @@ namespace smartBNB
             return step;
         }
         
-        private static PointMulStep EdDSA_PointMul_ByRange(PointMulStep initialStep, int ini, int fin, BigInteger p, BigInteger d)
+        private static PointMulStep EdDSA_PointMul_ByRange(PointMulStep initialStep, int itNum, BigInteger p, BigInteger d)
         {
             PointMulStep stepRecord = initialStep;
-            for (int i=ini; i<fin; i++)
+            for (int i=0; i<itNum; i++)
             {
                 stepRecord = EdDSA_PointMul_step(stepRecord, p, d);
             }
@@ -707,9 +707,9 @@ namespace smartBNB
 
             BigInteger[] hA = EdDSA_PointMul(h, A, p, d);
             
-			BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
+            BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
 			
-			bool isSigOK = point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
+            bool isSigOK = point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
             
             return isSigOK;
         }
@@ -788,7 +788,7 @@ namespace smartBNB
                 case 0x0:
                     return BytesToObject(Storage.Get("0x0_"+collatId.AsString()+"_"+txHash.AsString()));
                 case 0x1:
-                    return BytesToObject(Storage.Get("mul_"+collatId.AsString()+"_"+txHash.AsString()));
+                    return BytesToObject(Storage.Get("0x1_"+collatId.AsString()+"_"+txHash.AsString()+"_"+(int)args[0]));
                 default:
                     return new Object();
             }
@@ -824,14 +824,14 @@ namespace smartBNB
             }
         }
    
-        private static bool ChallengeInitialChecks(byte state, byte[] collatId, byte[] txHash, BigInteger p)
+        private static bool ChallengeInitialChecks(byte state, byte[] collatId, byte[] txHash, int sigIndex, BigInteger p)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
-            byte[] signature = challengeVars.signature[0];
-            BigInteger R0_xSigHigh = challengeVars.xs[0];
-            BigInteger R1_ySigHigh = challengeVars.ys[0];
-            byte[] signableBytes = challengeVars.signableBytes[0];
+            byte[] signature = challengeVars.signature[sigIndex];
+            BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
+            BigInteger R1_ySigHigh = challengeVars.ys[sigIndex];
+            byte[] signableBytes = challengeVars.signableBytes[sigIndex];
             byte[] blockHash = challengeVars.blockHash;
             
             if (signature.Length!=64)
@@ -859,13 +859,13 @@ namespace smartBNB
             return true;
         }
         
-	private static bool ChallengeCheckBytes(byte state, byte[] collatId, byte[] txHash, byte[] pubK)
+	private static bool ChallengeCheckBytes(byte state, byte[] collatId, byte[] txHash, int sigIndex, byte[] pubK)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
-            ulong[] pre = challengeVars.pre[0];
-            byte[] signature = challengeVars.signature[0];
-            byte[] signableBytes = challengeVars.signableBytes[0];
+            ulong[] pre = challengeVars.pre[sigIndex];
+            byte[] signature = challengeVars.signature[sigIndex];
+            byte[] signableBytes = challengeVars.signableBytes[sigIndex];
             
             byte[] Rs_signatureHigh = signature.Range(0, 32);
             byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
@@ -873,49 +873,49 @@ namespace smartBNB
             return checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1]);
         }
         
-        private static bool ChallengeSha512(byte state, byte[] collatId, byte[] txHash)
+        private static bool ChallengeSha512(byte state, byte[] collatId, byte[] txHash, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
-            ulong[] pre = challengeVars.pre[0];
-            ulong[] hash = challengeVars.preHash[0];
+            ulong[] pre = challengeVars.pre[sigIndex];
+            ulong[] hash = challengeVars.preHash[sigIndex];
             
             ulong[] expectedHash = sha512(pre);
             
             return (expectedHash==hash);
         }
         
-        private static bool ChallengeSha512ModQ(byte state, byte[] collatId, byte[] txHash)
+        private static bool ChallengeSha512ModQ(byte state, byte[] collatId, byte[] txHash, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
-            ulong[] pre = challengeVars.pre[0];
-            ulong[] hash = challengeVars.preHash[0];
-            BigInteger mod = challengeVars.preHashMod[0];
+            ulong[] pre = challengeVars.pre[sigIndex];
+            ulong[] hash = challengeVars.preHash[sigIndex];
+            BigInteger mod = challengeVars.preHashMod[sigIndex];
             
             BigInteger expectedMod = sha512modq(hash);
             
             return (expectedMod==mod);
         }
         
-        private static bool ChallengePointEqual(byte state, byte[] collatId, byte[] txHash, BigInteger p, BigInteger d)
+        private static bool ChallengePointEqual(byte state, byte[] collatId, byte[] txHash, int sigIndex, BigInteger p, BigInteger d)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
-            BigInteger[] sB = challengeVars.sB[0];
-            BigInteger[] hA = challengeVars.hA[0];
-            BigInteger R0_xSigHigh = challengeVars.xs[0];
-            BigInteger R1_ySigHigh = challengeVars.ys[0];
+            BigInteger[] sB = challengeVars.sB[sigIndex];
+            BigInteger[] hA = challengeVars.hA[sigIndex];
+            BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
+            BigInteger R1_ySigHigh = challengeVars.ys[sigIndex];
             
-			BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
+            BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
 			
-			return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
+            return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
         }
 
-	private static bool ChallengeEdDSA_PointMul_Setp(byte state, byte[] collatId, byte[] txHash, int i, int n, BigInteger p, BigInteger d)
+	private static bool ChallengeEdDSA_PointMul_Setp(byte state, byte[] collatId, byte[] txHash, int sigIndex, int i, int n, BigInteger p, BigInteger d)
         {
             PointMulSteps pointMulSteps = new PointMulSteps();
-            pointMulSteps = (PointMulSteps)getStateFromStorage(state, collatId, txHash, null);
+            pointMulSteps = (PointMulSteps)getStateFromStorage(state, collatId, txHash, sigIndex);
             
             PointMulStep initialStep = new PointMulStep();
             initialStep.s = pointMulSteps.s[i];
