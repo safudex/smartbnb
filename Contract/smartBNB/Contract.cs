@@ -583,13 +583,14 @@ namespace smartBNB
 	*/
 	public static bool checkBytes(ulong[] pre, byte[] bytes, int ini, int fin)
         {
-            if(bytes.Length!=((fin-ini)+1)/8)
+
+            if(bytes.Length!=fin/8)
                 return false;
 
             ulong val = pre[(fin - 1) / 64];
             
             byte byt = bytes[bytes.Length-1];
-            
+
             ulong itmsg = ((ulong)1)<<(64 - (fin - 64));
             ulong itbyt = 1;
             
@@ -612,8 +613,12 @@ namespace smartBNB
                     itbyt = itbyt << 1;
                     itmsg = itmsg << 1;
                 }
-                else
+                else{
+                    Storage.Put("len", bytes.Length);
+                    Storage.Put("fin", fin);
+                    Storage.Put("ini", ini);
                     return false;
+                }
       
             }
             return true;
@@ -628,46 +633,42 @@ namespace smartBNB
             return true;
         }
 	
-	private static bool verify_signature(BigInteger A0_xPubK, BigInteger A1_yPubK, byte[] pubK, byte[] signature, BigInteger R0_xSigHigh, BigInteger R1_ySigHigh, ulong[] pre, byte[] signBytes, byte[] blockHash)
-	{
+	private static bool verify_signature(
+            BigInteger A0_xPubK, BigInteger A1_yPubK, byte[] pubK,
+            BigInteger R0_xSigHigh, BigInteger R1_ySigHigh, byte[] signature,
+            ulong[] pre, byte[] signableBytes, byte[] blockHash)
+        {
             byte[] byteP = {0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
-            BigInteger p = byteP.AsBigInteger();
-
-            byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
-            BigInteger d = byteD.AsBigInteger();
+			BigInteger p = byteP.AsBigInteger();
+			
+			byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
+			BigInteger d = byteD.AsBigInteger();
+            
+            if (signature.Length!=64)
+                throw new Exception("Bad signature length");
             
             byte[] Rs_signatureHigh = signature.Range(0, 32);
-            byte[] s_signatureLow = signature.Range(32, 32);
-            
-            if ((s_signatureLow.Length+Rs_signatureHigh.Length)!=64)
-                throw new Exception("Bad signature length");
-               
-            if (!checkCompressed(A0_xPubK, A1_yPubK, pubK, p))
-                throw new Exception("Relationship between compressed and decompressed public key not found");
              
-            //BigInteger Rs = Rs_signatureHigh.AsBigInteger();
             if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
-                throw new Exception("Relationship between compressed and decompressed public key not found");
+                throw new Exception("Relationship between compressed and decompressed public point not found");
                 
             byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
             BigInteger q = q_bytes.AsBigInteger();
+            
+            byte[] s_signatureLow = signature.Range(32, 32);
             BigInteger s = s_signatureLow.AsBigInteger();
             if (s>=q || s<0)
                 return false;
             
             for (int i=0; i<32;i++)
             {
-                if(blockHash[i]!=signBytes[80+i])
+                if(blockHash[i]!=signableBytes[16+i])
                     throw new Exception("Hash not contained in signBytes");
             }
             
-            for (int i=0; i<32;i++)
-            {
-                if(pubK[i]!=signBytes[32+i])
-                    throw new Exception("Hash not contained in signBytes");
-            }
-
-            if (!checkBytes(pre, signBytes, 1, (int)pre[pre.Length-1])){
+            byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
+            
+            if (!checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1])){
                 throw new Exception("Wrong padded message");
             }
 
