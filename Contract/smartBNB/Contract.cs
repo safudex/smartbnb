@@ -26,6 +26,14 @@ namespace smartBNB
             }
             return true;
         }
+	
+	private static bool SaveChallengeState()
+	{
+		if (Runtime.CheckWitness((byte[])args[0])){
+			return saveStateToStorage(0x0, (byte[])args[0], (byte[])args[1], (byte[][])args[2],(BigInteger[])args[3],(BigInteger[])args[4],(byte[][])args[5],(byte[])args[6],(ulong[][])args[7],(ulong[][])args[8],(BigInteger[])args[9],(BigInteger[][])args[10],(BigInteger[][])args[11]);
+		}
+		return false;
+	}
 
         private static bool Validate(byte[] rawProof, byte[] rawHeader, byte[] rawSignatures)
         {
@@ -778,7 +786,7 @@ namespace smartBNB
         }
         
         //ARGS[0] = SIG, //ARGS[1] = STEP
-        private static void saveStateToStorage(byte state, byte[] callerAddr, byte[] txHash, params object[] args)
+        private static bool saveStateToStorage(byte state, byte[] callerAddr, byte[] txHash, params object[] args)
         {
             switch (state)
             {
@@ -795,13 +803,13 @@ namespace smartBNB
                     challengeVars.sB = (BigInteger[][])args[8];//sB
                     challengeVars.hA = (BigInteger[][])args[9];//hA
                     Storage.Put("0x0_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(challengeVars));
-                    break;
+                    return true;
                 case 0x1:
                     PointMulStep[] pointMulSteps = new PointMulStep[32];
                     Storage.Put("0x1_"+callerAddr.AsString()+"_"+txHash.AsString()+"_"+(int)args[0]+"_"+(int)args[1], ObjectToBytes(pointMulSteps));
-                    break;
+                    return true;
                 default:
-                    break;
+                    return false;
             }
         }
 
