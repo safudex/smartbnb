@@ -275,7 +275,16 @@ namespace smartBNB
             return Q;
         }
 	
-	struct PointMulStep
+	[Serializable]
+        struct PointMulSteps
+        {
+            public BigInteger[][] Q;
+            public BigInteger[] s;
+            public BigInteger[][] P;
+        }
+        
+        [Serializable]
+        struct PointMulStep
         {
             public BigInteger[] Q;
             public BigInteger s;
@@ -777,9 +786,9 @@ namespace smartBNB
             switch (state)
             {
                 case 0x0:
-                    return BytesToObject(Storage.Get("0x0_"+collatId.AsString()+"_"+txHash.AsString()+"_"));
+                    return BytesToObject(Storage.Get("0x0_"+collatId.AsString()+"_"+txHash.AsString()));
                 case 0x1:
-                    return BytesToObject(Storage.Get("mul_"+collatId.AsString()+"_"+txHash.AsString()+"_"+(int)args[0]+"_"+(int)args[1]));
+                    return BytesToObject(Storage.Get("mul_"+collatId.AsString()+"_"+txHash.AsString()));
                 default:
                     return new Object();
             }
@@ -804,8 +813,11 @@ namespace smartBNB
                     Storage.Put("0x0_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(challengeVars));
                     return true;
                 case 0x1:
-                    PointMulStep[] pointMulSteps = new PointMulStep[32];
-                    Storage.Put("0x1_"+callerAddr.AsString()+"_"+txHash.AsString()+"_"+(int)args[0]+"_"+(int)args[1], ObjectToBytes(pointMulSteps));
+                    PointMulSteps pointMulSteps = new PointMulSteps();
+                    pointMulSteps.s = (BigInteger[])args[0];
+                    pointMulSteps.P = (BigInteger[][])args[1];
+                    pointMulSteps.Q = (BigInteger[][])args[2];
+                    Storage.Put("0x1_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(pointMulSteps));
                     return true;
                 default:
                     return false;
@@ -900,5 +912,37 @@ namespace smartBNB
 			return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
         }
 
+	private static bool ChallengeEdDSA_PointMul_Setp(byte state, byte[] collatId, byte[] txHash, int i, int n, BigInteger p, BigInteger d)
+        {
+            PointMulSteps pointMulSteps = new PointMulSteps();
+            pointMulSteps = (PointMulSteps)getStateFromStorage(state, collatId, txHash, null);
+            
+            PointMulStep initialStep = new PointMulStep();
+            initialStep.s = pointMulSteps.s[i];
+            initialStep.P = pointMulSteps.P[i];
+            initialStep.Q = pointMulSteps.Q[i];
+            PointMulStep expectedStep = new PointMulStep();
+            expectedStep.s = pointMulSteps.s[n];
+            expectedStep.P = pointMulSteps.P[n];
+            expectedStep.Q = pointMulSteps.Q[n];
+            
+            
+            PointMulStep res = new PointMulStep();
+            res = EdDSA_PointMul_ByRange(initialStep, n, p, d);
+            
+            if ((expectedStep.Q[0] == res.Q[0])&
+                (expectedStep.Q[1] == res.Q[1])&
+                (expectedStep.Q[2] == res.Q[2])&
+                (expectedStep.Q[3] == res.Q[3])&
+                (expectedStep.s ==res.s)&
+                (expectedStep.P[0] == res.P[0])&
+                (expectedStep.P[1] == res.P[1])&
+                (expectedStep.P[2] == res.P[2])&
+                (expectedStep.P[1] == res.P[1]))
+                return true;
+            else
+                return false;
+        }
+        
     }
 }
