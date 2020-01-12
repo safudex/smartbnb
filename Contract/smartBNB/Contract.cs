@@ -2,6 +2,7 @@ using Neo.SmartContract.Framework;
 using Neo.SmartContract.Framework.Services.Neo;
 using System;
 using System.Numerics;
+using Helper = Neo.SmartContract.Framework.Helper;
 
 namespace smartBNB
 {
@@ -26,14 +27,14 @@ namespace smartBNB
             }
             return true;
         }
-	
-	private static bool SaveChallengeState()
-	{
-		if (Runtime.CheckWitness((byte[])args[0])){
-			return saveStateToStorage(0x0, (byte[])args[0], (byte[])args[1], (byte[][])args[2],(BigInteger[])args[3],(BigInteger[])args[4],(byte[][])args[5],(byte[])args[6],(ulong[][])args[7],(ulong[][])args[8],(BigInteger[])args[9],(BigInteger[][])args[10],(BigInteger[][])args[11]);
-		}
-		return false;
-	}
+    	
+    	private static bool SaveChallengeState(params object[] args)
+    	{
+    		if (Runtime.CheckWitness((byte[])args[0])){
+    			return saveStateToStorage(0x0, (byte[])args[0], (byte[])args[1], (byte[][])args[2],(BigInteger[])args[3],(BigInteger[])args[4],(byte[][])args[5],(byte[])args[6],(ulong[][])args[7],(ulong[][])args[8],(BigInteger[])args[9],(BigInteger[][])args[10],(BigInteger[][])args[11]);
+    		}
+    		return false;
+    	}
 
         private static bool Validate(byte[] rawProof, byte[] rawHeader, byte[] rawSignatures)
         {
