@@ -784,16 +784,16 @@ namespace smartBNB
             {
                 case 0x0:
                     GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-                    challengeVars.signature = (byte[][])args[2];//signature
-                    challengeVars.xs = (BigInteger[])args[3];//xs
-                    challengeVars.ys = (BigInteger[])args[4];//ys
-                    challengeVars.signableBytes = (byte[][])args[5];//signableBytes
-                    challengeVars.blockHash = (byte[])args[6];//blockHash
-                    challengeVars.pre = (ulong[][])args[7];//pre
-                    challengeVars.preHash = (ulong[][])args[8];//preHash
-                    challengeVars.preHashMod = (BigInteger[])args[9];//preHashMod
-                    challengeVars.sB = (BigInteger[][])args[10];//sB
-                    challengeVars.hA = (BigInteger[][])args[11];//hA
+                    challengeVars.signature = (byte[][])args[0];//signature
+                    challengeVars.xs = (BigInteger[])args[1];//xs
+                    challengeVars.ys = (BigInteger[])args[2];//ys
+                    challengeVars.signableBytes = (byte[][])args[3];//signableBytes
+                    challengeVars.blockHash = (byte[])args[4];//blockHash
+                    challengeVars.pre = (ulong[][])args[5];//pre
+                    challengeVars.preHash = (ulong[][])args[6];//preHash
+                    challengeVars.preHashMod = (BigInteger[])args[7];//preHashMod
+                    challengeVars.sB = (BigInteger[][])args[8];//sB
+                    challengeVars.hA = (BigInteger[][])args[9];//hA
                     Storage.Put("0x0_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(challengeVars));
                     break;
                 case 0x1:
