@@ -1,4 +1,4 @@
-﻿using Neo.SmartContract.Framework;
+using Neo.SmartContract.Framework;
 using Neo.SmartContract.Framework.Services.Neo;
 using System;
 using System.Numerics;
@@ -727,6 +727,82 @@ namespace smartBNB
             compressed[index31] = withSign;
             
             return true;
+        }
+	
+	        
+        private static object BytesToObject(byte[] bytes)
+        {
+            if (bytes.Length == 0)
+            {
+                return new object();
+            }
+            else
+            {
+                object[] objs = (object[])Helper.Deserialize(bytes);
+                return (object)objs;
+            }
+        }
+        
+        private static byte[] ObjectToBytes(object obj)
+        {
+            return Helper.Serialize(obj);
+        }
+        
+        [Serializable]
+        struct GeneralChallengeVariables
+        {
+            public byte[][] signature;
+            public BigInteger[] xs;
+            public BigInteger[] ys;
+            public byte[][] signableBytes;
+            public byte[] blockHash;
+            public ulong[][] pre;
+            public ulong[][] preHash;
+            public BigInteger[] preHashMod;
+            public BigInteger[][] sB;
+            public BigInteger[][] hA;
+        }
+        
+        //ARGS[0] = SIG, //ARGS[1] = STEP
+        private static Object getStateFromStorage(string state, byte[] collatId, byte[] txId, params object[] args)
+        {
+            switch (state)
+            {
+                case "a":
+                    return Storage.Get("general_"+collatId.AsString()+"_"+txId.AsString()+"_"+(int)args[0]);
+                case "b":
+                    return Storage.Get("mul_"+collatId.AsString()+"_"+txId.AsString()+"_"+(int)args[0]+"_"+(int)args[1]);
+                default:
+                    return null;
+            }
+        }
+        
+        //ARGS[0] = SIG, //ARGS[1] = STEP
+        private static void saveStateToStorage(byte state, byte[] callerAddr, byte[] txHash, params object[] args)
+        {
+            switch (state)
+            {
+                case 0x0:
+                    GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+                    challengeVars.signature = (byte[][])args[2];//signature
+                    challengeVars.xs = (BigInteger[])args[3];//xs
+                    challengeVars.ys = (BigInteger[])args[4];//ys
+                    challengeVars.signableBytes = (byte[][])args[5];//signableBytes
+                    challengeVars.blockHash = (byte[])args[6];//blockHash
+                    challengeVars.pre = (ulong[][])args[7];//pre
+                    challengeVars.preHash = (ulong[][])args[8];//preHash
+                    challengeVars.preHashMod = (BigInteger[])args[9];//preHashMod
+                    challengeVars.sB = (BigInteger[][])args[10];//sB
+                    challengeVars.hA = (BigInteger[][])args[11];//hA
+                    Storage.Put("0x0_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(challengeVars));
+                    break;
+                case 0x1:
+                    PointMulStep[] pointMulSteps = new PointMulStep[32];
+                    Storage.Put("0x1_"+callerAddr.AsString()+"_"+txHash.AsString()+"_"+(int)args[0]+"_"+(int)args[1], ObjectToBytes(pointMulSteps));
+                    break;
+                default:
+                    break;
+            }
         }
 
     }
