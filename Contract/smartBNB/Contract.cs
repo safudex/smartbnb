@@ -771,21 +771,19 @@ namespace smartBNB
             public BigInteger[][] hA;
         }
         
-        //ARGS[0] = SIG, //ARGS[1] = STEP
-        private static Object getStateFromStorage(string state, byte[] collatId, byte[] txId, params object[] args)
+	private static Object getStateFromStorage(byte state, byte[] collatId, byte[] txHash, params object[] args)
         {
             switch (state)
             {
-                case "a":
-                    return Storage.Get("general_"+collatId.AsString()+"_"+txId.AsString()+"_"+(int)args[0]);
-                case "b":
-                    return Storage.Get("mul_"+collatId.AsString()+"_"+txId.AsString()+"_"+(int)args[0]+"_"+(int)args[1]);
+                case 0x0:
+                    return BytesToObject(Storage.Get("0x0_"+collatId.AsString()+"_"+txHash.AsString()+"_"));
+                case 0x1:
+                    return BytesToObject(Storage.Get("mul_"+collatId.AsString()+"_"+txHash.AsString()+"_"+(int)args[0]+"_"+(int)args[1]));
                 default:
-                    return null;
+                    return new Object();
             }
         }
         
-        //ARGS[0] = SIG, //ARGS[1] = STEP
         private static bool saveStateToStorage(byte state, byte[] callerAddr, byte[] txHash, params object[] args)
         {
             switch (state)
@@ -811,6 +809,80 @@ namespace smartBNB
                 default:
                     return false;
             }
+        }
+   
+        private static bool ChallengeInitialChecks(byte state, byte[] collatId, byte[] txHash, BigInteger p)
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
+            byte[] signature = challengeVars.signature[0];
+            BigInteger R0_xSigHigh = challengeVars.xs[0];
+            BigInteger R1_ySigHigh = challengeVars.ys[0];
+            byte[] signableBytes = challengeVars.signableBytes[0];
+            byte[] blockHash = challengeVars.blockHash;
+            
+            if (signature.Length!=64)
+                throw new Exception("Bad signature length");
+            
+            byte[] Rs_signatureHigh = signature.Range(0, 32);
+            
+            if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
+                throw new Exception("Relationship between compressed and decompressed public point not found");
+               
+            byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
+            BigInteger q = q_bytes.AsBigInteger();
+            
+            byte[] s_signatureLow = signature.Range(32, 32);
+            BigInteger s = s_signatureLow.AsBigInteger();
+            if (s>=q || s<0)
+                return false;
+            
+            for (int i=0; i<32;i++)
+            {
+                if(blockHash[i]!=signableBytes[16+i])
+                    throw new Exception("Hash not contained in signableBytes");
+            }
+            
+            return true;
+        }
+        
+        private static bool ChallengeCheckBytes(byte[] pubK)
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
+            ulong[] pre = challengeVars.pre[0];
+            byte[] signature = challengeVars.signature[0];
+            byte[] signableBytes = challengeVars.signableBytes[0];
+            
+            byte[] Rs_signatureHigh = signature.Range(0, 32);
+            byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
+            
+            return checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1]);
+        }
+        
+        private static bool ChallengeSha512()
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
+            ulong[] pre = challengeVars.pre[0];
+            ulong[] hash = (challengeVars.hash[0];
+            
+            ulong[] expectedHash = sha512(pre);
+            
+            return (expectedHash==hash);
+        }
+        
+        private static bool ChallengeSha512ModQ()
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
+            ulong[] pre = challengeVars.pre[0];
+            ulong[] hash = (challengeVars.hash[0];
+            BigInteger mod = challengeVars.preHashMod[0];
+            
+            BigInteger expectedMod = sha512modq(hash);
+            
+            return (expectedMod==mod);
         }
 
     }
