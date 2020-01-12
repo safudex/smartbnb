@@ -846,7 +846,7 @@ namespace smartBNB
             return true;
         }
         
-        private static bool ChallengeCheckBytes(byte[] pubK)
+	private static bool ChallengeCheckBytes(byte state, byte[] collatId, byte[] txHash, byte[] pubK)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
@@ -860,24 +860,24 @@ namespace smartBNB
             return checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1]);
         }
         
-        private static bool ChallengeSha512()
+        private static bool ChallengeSha512(byte state, byte[] collatId, byte[] txHash)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
             ulong[] pre = challengeVars.pre[0];
-            ulong[] hash = challengeVars.hash[0];
+            ulong[] hash = challengeVars.preHash[0];
             
             ulong[] expectedHash = sha512(pre);
             
             return (expectedHash==hash);
         }
         
-        private static bool ChallengeSha512ModQ()
+        private static bool ChallengeSha512ModQ(byte state, byte[] collatId, byte[] txHash)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
             ulong[] pre = challengeVars.pre[0];
-            ulong[] hash = challengeVars.hash[0];
+            ulong[] hash = challengeVars.preHash[0];
             BigInteger mod = challengeVars.preHashMod[0];
             
             BigInteger expectedMod = sha512modq(hash);
@@ -885,18 +885,18 @@ namespace smartBNB
             return (expectedMod==mod);
         }
         
-        private static bool ChallengePointEqual(BigInteger p, BigInteger d)
+        private static bool ChallengePointEqual(byte state, byte[] collatId, byte[] txHash, BigInteger p, BigInteger d)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(state, collatId, txHash, null);
             BigInteger[] sB = challengeVars.sB[0];
             BigInteger[] hA = challengeVars.hA[0];
-            BigInteger R0_xSigHigh = challengeVars.R0_xSigHigh[0];
-            BigInteger R1_ySigHigh = challengeVars.R1_ySigHigh[0];
-
-            BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
-
-            return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
+            BigInteger R0_xSigHigh = challengeVars.xs[0];
+            BigInteger R1_ySigHigh = challengeVars.ys[0];
+            
+			BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
+			
+			return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
         }
 
     }
