@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Version>2.10.3</Version>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>Neo.Plugins</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="NeoPubSub\config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Akka" Version="1.3.11" />
+    <PackageReference Include="Neo" Version="2.10.3" />
+    <PackageReference Include="StackExchange.Redis" Version="2.0.519" />
+  </ItemGroup>
+</Project>
