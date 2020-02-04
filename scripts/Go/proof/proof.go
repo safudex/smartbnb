@@ -1,15 +1,19 @@
 package proof
 
 import (
+	"fmt"
 	"encoding/hex"
 	"github.com/binance-chain/go-sdk/client/rpc"
 	ctypes "github.com/binance-chain/go-sdk/common/types"
 	"github.com/binance-chain/go-sdk/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	v "github.com/tendermint/tendermint/types"
-        "time"
+	"time"
 	"os/exec"
 	"strings"
+	"strconv"
+	"io"
+	"os"
 )
 
 var cdc = types.NewCodec()
@@ -29,7 +33,7 @@ func createPrecommit(vd voteData) *v.Vote {
 type voteData struct {
 	timestamp time.Time//string
 	hashBlock []byte
-	partsHash []byte//string//TODO: ARRAY
+	partsHash []byte//string//TODO: check if ok ARRAY
 	partsTotal int
 	validatorAddr []byte
 	validatorIndex int
@@ -38,22 +42,21 @@ type voteData struct {
 }
 func createVote(vd voteData) *v.Vote {
 	stamp := vd.timestamp
-
-        return &v.Vote{
-                Type:      v.SignedMsgType(byte(v.PrecommitType)),
-                Height:    vd.height,
-                Round:     vd.round,
-                Timestamp: stamp,
-                BlockID: v.BlockID{
-                        Hash: vd.hashBlock,
-                        PartsHeader: v.PartSetHeader{
-                                Total: vd.partsTotal,
-                                Hash:  vd.partsHash,
-                        },
-                },
-                ValidatorAddress: vd.validatorAddr,
-                ValidatorIndex:   0,
-        }
+    return &v.Vote{
+            Type:      v.SignedMsgType(byte(v.PrecommitType)),
+            Height:    vd.height,
+            Round:     vd.round,
+            Timestamp: stamp,
+            BlockID: v.BlockID{
+                    Hash: vd.hashBlock,
+                    PartsHeader: v.PartSetHeader{
+                            Total: vd.partsTotal,
+                            Hash:  vd.partsHash,
+                    },
+            },
+            ValidatorAddress: vd.validatorAddr,
+            ValidatorIndex:   0,
+    }
 }
 
 func VoteSignableHexBytes(vd voteData) string {
@@ -71,7 +74,14 @@ func Decompress(s string) (string, string, string) {
 	return r[0], r[1], r[2]
 }
 
-
+func GetSbHa(msg string, sig string, pubk string) (string, string, string, string, string) {
+    out, err := exec.Command("python3", "helper.py", "3", msg, sig, pubk).Output()
+    if err != nil {
+        panic(err)
+    }
+    r := strings.Split(string(out), "\n")
+    return r[0], r[1], r[2], r[3], r[4]
+}
 
 func GetPreprocessedMsg(msg string) string {
 	out, err := exec.Command("python3", "helper.py", "2", msg).Output()
@@ -79,8 +89,70 @@ func GetPreprocessedMsg(msg string) string {
 		panic(err)
 	}
 	r := strings.Split(string(out), "\n")
-	return r[0]//, r[1], r[2]
-	//return string(out)
+	return r[0]
+}
+
+func GetPointMulSteps(isHA string, sigint string, its string, pubk string) string {
+	out, err := exec.Command("python3", "helper.py", "4", isHA, sigint, its, pubk).Output()
+	if err != nil {
+		panic(err)
+	}
+	r := strings.Split(string(out), "\n")
+	joined := ""
+	fmt.Print(string(sigint)+"\n")
+	s:=""
+	P:=""
+	Q:=""
+	it, _:=strconv.Atoi(its)
+	for i:=0; i<256/it; i++{
+		s += r[i*3]
+		P += r[i*3+1]
+		Q += r[i*3+2]
+		if(i<(256/it)-1){
+			s+=","
+			P+=","
+			Q+=","
+		}
+	}
+	joined += s+","+Q+","+P
+	return joined
+}
+
+func WriteStringToFile(filepath, s string) error {
+	fo, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer fo.Close()
+
+	_, err = io.Copy(fo, strings.NewReader(s))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+	//r := strings.Split(string(out), "\n")
+func Invoke(spv SPV) string {
+	WriteStringToFile("pointmulsteps", spv.MulStepsSB+"||"+spv.MulStepsHA)
+	out, err := exec.Command("node", "invoke_neonJS.js",
+	"colladId",
+	spv.TxId,
+	spv.Signatures,
+	spv.XSigLow,
+	spv.YSigLow,
+	spv.SignBytes,
+	spv.HeaderHash,
+	spv.PresMsg,
+	spv.PresHash,
+	spv.PresHashMod,
+	spv.SB,
+	spv.HA,).CombinedOutput()
+	/*spv.MulStepsSB,spv.MulStepsHA*/
+	if err != nil {
+		panic(err)
+	}
+	return string(out)
 }
 
 type SPV struct {
@@ -90,18 +162,25 @@ type SPV struct {
 	Signatures string
 	XSigLow string
 	YSigLow string
-	PreMsg string
-	Msg string
+	PresMsg string
 	SignBytes string
+	TxId string
+	PresHash string
+	PresHashMod string
+	SB string
+	HA string
+	MulStepsSB string
+	MulStepsHA string
 }
 
 func GetProof(txHash string) SPV {
 	spv := SPV{}
+	spv.TxId = txHash
 	//init rpc client
 	nodeAddr := "http://127.0.0.1:27147"
 	client := rpc.NewRPCClient(nodeAddr, ctypes.ProdNetwork)
 	//getting tx from node
-	bytesTxHash, _ := hex.DecodeString(txHash) 
+	bytesTxHash, _ := hex.DecodeString(txHash)
 	restx, _ := client.Tx(bytesTxHash, true)
 
 	//tx block
@@ -136,7 +215,6 @@ func GetProof(txHash string) SPV {
 	}
 
 	spv.TxProof = hex.EncodeToString(paq)
-
 
 	//block header
 	//actual block header
@@ -185,48 +263,121 @@ func GetProof(txHash string) SPV {
 	}
 
 	spv.Header = hex.EncodeToString(paqHeader)
+	spv.HeaderHash = hex.EncodeToString(h.Hash())
 
 	//signatures
 	//signatures from height+1
 	nextBlockHeight := txBlockHeight+int64(1)
 	resNextBlock, _ := client.Block(&nextBlockHeight) //get height+1 to obtain signatures of height
 	s := resNextBlock.Block.LastCommit.Precommits
+	s = s[:8]
 
         //paqSignatures <- (signature0 | signature1 | signature2 | ... | signature10 )
 	paqSignatures := make([]byte, 0)
+	strSignatures := ""
 	for i:=0; i<len(s);i++{
 		paqSignatures = append(paqSignatures, s[i].Signature...)
+		strSignatures += hex.EncodeToString(s[i].Signature)
+		if (i<len(s)-1){
+			strSignatures += ","
+		}
 	}
 
-	spv.Signatures = hex.EncodeToString(paqSignatures)
+	spv.Signatures = strSignatures
 
-	sig_low := hex.EncodeToString(s[0].Signature[:32])
+	strX := ""
+	strY := ""
+	sig_high := ""
+	for i:=0; i<len(s); i++{
+		sig_high = hex.EncodeToString(s[i].Signature[:32])
+		s_x, s_y, _ := Decompress(sig_high)
+		strX += s_x
+		strY += s_y
+		if (i<len(s)-1){
+			strX += ","
+			strY += ","
+		}
+	}
 
-	vote := voteData{
-		timestamp: s[0].Timestamp,
-		hashBlock: s[0].BlockID.Hash,
-		partsHash: s[0].BlockID.PartsHeader.Hash,
-		partsTotal: s[0].BlockID.PartsHeader.Total,
-		validatorAddr: s[0].ValidatorAddress,
-		validatorIndex: s[0].ValidatorIndex,
-		height: int64(s[0].Height),
-		round: s[0].Round,
+	spv.XSigLow = strX
+	spv.YSigLow = strY
+
+	pubks := []string{
+				"d3769d8a1f78b4c17a965f7a30d4181fabbd1f969f46d3c8e83b5ad4845421d8",
+				"2ba4e81542f437b7ae1f8a35ddb233c789a8dc22734377d9b6d63af1ca403b61",
+				"df8da8c5abfdb38595391308bb71e5a1e0aabdc1d0cf38315d50d6be939b2606",
+				"b6619edca4143484800281d698b70c935e9152ad57b31d85c05f2f79f64b39f3",
+				"9446d14ad86c8d2d74780b0847110001a1c2e252eedfea4753ebbbfce3a22f52",
+				"0353c639f80cc8015944436dab1032245d44f912edc31ef668ff9f4a45cd0599",
+				"e81d3797e0544c3a718e1f05f0fb782212e248e784c1a851be87e77ae0db230e",
+				"5e3fcda30bd19d45c4b73688da35e7da1fce7c6859b2c1f20ed5202d24144e3e",
+				"b06a59a2d75bf5d014fce7c999b5e71e7a960870f725847d4ba3235baeaa08ef",
+				"0c910e2fe650e4e01406b3310b489fb60a84bc3ff5c5bee3a56d5898b6a8af32",
+				"71f2d7b8ec1c8b99a653429b0118cd201f794f409d0fea4d65b1b662f2b00063"}
+
+	signBytes := ""
+	msg := ""
+	pres := ""
+	presHash := ""
+	presHashMod := ""
+	sig := ""
+	sB := ""
+	hA := ""
+	stepsSB := ""
+	stepsHA := ""
+	for i:=0; i<len(s); i++{
+		vote := voteData{
+			timestamp: s[i].Timestamp,
+			hashBlock: s[i].BlockID.Hash,
+			partsHash: s[i].BlockID.PartsHeader.Hash,
+			partsTotal: s[i].BlockID.PartsHeader.Total,
+			validatorAddr: s[i].ValidatorAddress,
+			validatorIndex: s[i].ValidatorIndex,
+			height: int64(s[i].Height),
+			round: s[i].Round,
+			}
+
+		sBytes := VoteSignableHexBytes(vote)
+		signBytes += sBytes
+		if (i<len(s)-1){
+			signBytes += ","
 		}
 
-	pubks := "d3769d8a1f78b4c17a965f7a30d4181fabbd1f969f46d3c8e83b5ad4845421d8"
+		sig = hex.EncodeToString(s[i].Signature)
+		msg = hex.EncodeToString(s[i].Signature[:32])
+		msg = msg + pubks[i] + sBytes
+		pre := GetPreprocessedMsg(msg)
+		preHash, preHashMod, s_int, sb, ha := GetSbHa(msg, sig, pubks[i])
+		pres += pre
+		presHash += preHash
+		presHashMod += preHashMod
+		sB += sb
+		hA += ha
 
-	s_x, s_y, _ := Decompress(sig_low)
-	spv.XSigLow = s_x
-	spv.YSigLow = s_y
+		stepSB := GetPointMulSteps("false", s_int, "8", "")
+		stepsSB += stepSB
 
+		stepHA := GetPointMulSteps("true", preHashMod, "8", pubks[i])
+		stepsHA += stepHA
 
-
-	signBytes := VoteSignableHexBytes(vote)
-	msg := sig_low+pubks+signBytes
-	pre := GetPreprocessedMsg(msg)
-
+		if (i<len(s)-1){
+			pres += " "
+			presHash += " "
+			presHashMod += ","
+			sB += " "
+			hA += " "
+			stepsSB += " "
+			stepsHA += " "
+		}
+	}
+	spv.MulStepsSB = stepsSB
+	spv.MulStepsHA = stepsHA
 	spv.SignBytes = signBytes
-	spv.Msg = msg
-	spv.PreMsg = pre
+
+	spv.PresMsg = pres
+	spv.PresHash = presHash
+	spv.PresHashMod = presHashMod
+	spv.SB = sB
+	spv.HA = hA
 	return spv
 }
