@@ -1,0 +1,16 @@
+{
+  "name": "invoke",
+  "version": "1.0.0",
+  "description": "",
+  "main": "invoke_neonJS.js",
+  "dependencies": {
+    "@cityofzion/neon-js": "^4.7.1",
+    "axios": "^0.19.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

@@ -394,7 +394,7 @@ function Challenge5(scriptHash){
         invoke(scriptHash, invokeArr)
 }
 
-var scriptHash = "673b50fb36e1ca1d83f22b1c699e08a3d7fddb2c"
+var scriptHash = "8aea8eac3b09b55aa8bbb9f47acd15821002972d"
 SaveState(scriptHash)
 //Challenge5(scriptHash)
 //Challenge3(scriptHash)

@@ -135,7 +135,7 @@ func WriteStringToFile(filepath, s string) error {
 	//r := strings.Split(string(out), "\n")
 func Invoke(spv SPV) string {
 	WriteStringToFile("pointmulsteps", spv.MulStepsSB+"||"+spv.MulStepsHA)
-	out, err := exec.Command("node", "invoke_neonJS.js",
+	out, err := exec.Command("node", "invoke/invoke_neonJS.js",
 	"colladId",
 	spv.TxId,
 	spv.Signatures,

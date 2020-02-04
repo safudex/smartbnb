@@ -173,15 +173,9 @@ def point_mul(s, P):
                 P = (P[0]%p, P[1]%p, P[2]%p, P[3]%p)
         return Q
 
-def point_mul_step(s, P, Q, f):
+def point_mul_step(s, P, Q):
         Q = (Q[0]%p, Q[1]%p, Q[2]%p, Q[3]%p)
         P = (P[0]%p, P[1]%p, P[2]%p, P[3]%p)
-        f.write(str(s))
-        f.write(" ")
-        f.write(str(P[0])+","+str(P[1])+","+str(P[2])+","+str(P[3]))
-        f.write(" ")
-        f.write(str(Q[0])+","+str(Q[1])+","+str(Q[2])+","+str(Q[3]))
-        f.write("\n ")
         if s > 0:
             if s & 1:
                     Q = point_add(Q, P)
@@ -189,18 +183,18 @@ def point_mul_step(s, P, Q, f):
             s >>= 1
         return s, P, Q
 
-def point_mul_by_it(s, P, Q, its, f):
+def point_mul_by_it(s, P, Q, its):
         _s, _P, _Q = s, P, Q
         for i in range(its):
-                _s, _P, _Q = point_mul_step(_s, _P, _Q, f)
+                _s, _P, _Q = point_mul_step(_s, _P, _Q)
         _Q = (_Q[0]%p, _Q[1]%p, _Q[2]%p, _Q[3]%p)
         _P = (_P[0]%p, _P[1]%p, _P[2]%p, _P[3]%p)
         return _s, _P, _Q
 
-def getPointMul(s, P, Q, its, f):
+def getPointMul(s, P, Q, its):
         s, its = int(s), int(its)
         for i in range((256//its)):
-                s, P, Q = point_mul_by_it(s, P, Q, its, f)        
+                s, P, Q = point_mul_by_it(s, P, Q, its)
                 Q = (Q[0]%p, Q[1]%p, Q[2]%p, Q[3]%p)
                 P = (P[0]%p, P[1]%p, P[2]%p, P[3]%p)
                 print(s)
@@ -218,4 +212,4 @@ elif op == "4":
         isHA = sys.argv[2]
         if isHA == "true":
             G = point_decompress(bytes.fromhex(sys.argv[5]))
-        getPointMul(sys.argv[3], G, (0, 1, 1, 0), sys.argv[4], f)
+        getPointMul(sys.argv[3], G, (0, 1, 1, 0), sys.argv[4])
