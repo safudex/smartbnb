@@ -14,13 +14,12 @@ namespace smartBNB
         public static bool Main(string operation, params object[] args)
         {
             Storage.Put("exec", operation);
-            
+
 			byte[] byteP =  {0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
 			BigInteger p = byteP.AsBigInteger();
 			
 			byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
 			BigInteger d = byteD.AsBigInteger();
-			
 			
 			//TODO ADD PUBKS DECOMPRESSED PX, PY
 			byte[][] pubks = new byte[][] {
@@ -148,12 +147,15 @@ namespace smartBNB
                     Storage.Put("r", r?"true":"false");
                     return r;
                 }
-                else if(operation=="challenge 4")
+                else if(operation=="challenge 4"){
                     /* ARGS
                     0 byte[] collatid
                     1 byte[] txid
                     2 int signature index*/
-                    return ChallengePointEqual((byte[])args[0], (byte[])args[1], (int)args[2], p, d);
+                    bool respe = ChallengePointEqual((byte[])args[0], (byte[])args[1], (int)args[2], p, d);
+                    Storage.Put("rrrpe", respe==true?"y":"n");
+                    return respe;
+                }
                 else if(operation=="challenge 5"){
                     /* ARGS
                     0 byte[] collatid
@@ -1075,13 +1077,25 @@ namespace smartBNB
         
         private static bool ChallengePointEqual(byte[] collatId, byte[] txHash, int sigIndex, BigInteger p, BigInteger d)
         {
+            int iint = 32;
+            int istep = (sigIndex*32+iint-1)%128;
+            int iarr = (iint+sigIndex*32)/128; 
+            string bs_sb = "sb"+((BigInteger)(iarr+48)).AsByteArray().AsString();
+            string bs_ha = "ha"+((BigInteger)(iarr+48)).AsByteArray().AsString();
+            Storage.Put("bs_sb", bs_sb);
+            Storage.Put("bs_ha", bs_ha);
+            string Qbs = "Qs_"+bs_sb;
+            BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(0x1, collatId, txHash, Qbs);
+            Qbs = "Qs_"+bs_ha;
+            BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(0x1, collatId, txHash, Qbs);
+            
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
-            BigInteger[] sB = challengeVars.sB[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
-            BigInteger[] hA = challengeVars.hA[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
+            BigInteger[] sB = Qssb[istep];//challengeVars.sB[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
+            BigInteger[] hA = Qsha[istep];//challengeVars.hA[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
             BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
             BigInteger R1_ySigHigh = challengeVars.ys[sigIndex];
-            
+
             BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
 
             return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
@@ -1090,8 +1104,8 @@ namespace smartBNB
 	    private static bool ChallengeEdDSA_PointMul_Setp(byte[] collatId, byte[] txHash, int sigIndex, int i, string mulid, byte[][] pubksDecompressed, BigInteger p, BigInteger d)
         {
             int iint = i;//String2BigInteger(i);
-            int istep = (sigIndex*32+iint-1)%64;//array index
-            int iarr = (iint+sigIndex*32)/64;
+            int istep = (sigIndex*32+iint-1)%128;//array index, negativeValue%value does not work in vm so its ok here
+            int iarr = (iint+sigIndex*32)/128; //
             string bs = mulid+((BigInteger)(iarr+48)).AsByteArray().AsString();
             Storage.Put("bs", bs);
             string Pbs = "Ps_"+bs;
@@ -1101,14 +1115,14 @@ namespace smartBNB
             string sbs = "ss_"+bs;
             BigInteger[] ss = (BigInteger[])getStateFromStorage(0x1, collatId, txHash, sbs);
 
-            int nsig = sigIndex*32+i-1;//TODO CHANGE 128 constant|| check when i = 128 ==fault;
-
-            int k = istep%32-32;
-                
+            //int nsig = sigIndex*128+i-1;//TODO CHANGE 128 constant|| check when i = 128 ==fault;
+            Storage.Put("laststep", "false");
             PointMulStep initialStep = new PointMulStep();
-            
-            if (modPositive(istep,32)-32==-1){
-                
+            PointMulStep expectedStep = new PointMulStep();
+            Storage.Put("istep", istep);
+            Storage.Put("iarr", iarr);
+            if (modPositive(istep,32)-32==-1)
+            {
                 initialStep.Q = new BigInteger[]{ 0, 1, 1, 0 };
                 if(mulid=="sb")
                 {
@@ -1129,7 +1143,8 @@ namespace smartBNB
                     BigInteger s = s_signatureLow.AsBigInteger();
                     
                     initialStep.s = s;
-                }else if(mulid=="ha")
+                }
+                else if(mulid=="ha")
                 {
                     BigInteger[] A = new BigInteger[4];
                     A[0] = pubksDecompressed[sigIndex*3].AsBigInteger();
@@ -1144,16 +1159,38 @@ namespace smartBNB
                     BigInteger[] mods = challengeVars.preHashMod;
                     initialStep.s = mods[sigIndex];
                 }
-            }else{
+            }
+            else
+            {
                 initialStep.s = ss[istep];
                 initialStep.P = Ps[istep];
                 initialStep.Q = Qs[istep];
             }
-
-            PointMulStep expectedStep = new PointMulStep();
-            expectedStep.s = ss[istep+1];//TODO check if nsig is not the last step or step0
-            expectedStep.P = Ps[istep+1];
+            
+            /*if (modPositive(istep,32)-32==-2)
+            {
+                expectedStep.s = 0;
+                GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+                challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
+                if(mulid=="sb")
+                {
+                    BigInteger[] sB = challengeVars.sB[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
+                    expectedStep.Q = sB;
+                }
+                else if(mulid=="ha")
+                {
+                    BigInteger[] hA = challengeVars.hA[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
+                    expectedStep.Q = hA;
+                }
+            }
+            else
+            {
+            }*/
+            
             expectedStep.Q = Qs[istep+1];
+            expectedStep.s = ss[istep+1];
+            expectedStep.P = Ps[istep+1];
+
             PointMulStep res = new PointMulStep();
             res = EdDSA_PointMul_ByRange(initialStep, 8, p, d);
             
