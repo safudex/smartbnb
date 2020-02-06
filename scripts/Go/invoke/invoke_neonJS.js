@@ -158,9 +158,9 @@ function randomInt(low, high) {
 }
 var node = "https://node"+randomInt(1, 3)+".neocompiler.io"
 async function invoke(scriptHash, invokeArr){
-	fs.appendFileSync('./logs/invokes', "invoking: "+ " "+invokeArr[0].value+ " "+invokeArr[1].value[2].value+ " "+invokeArr[1].value[3].value)
-    const txHash = await InvokeFromAccount(0, 0, 500, 0, 0, scriptHash, "", node, "SharedPrivateNet", invokeArr)
-	fs.appendFileSync('./logs/invokes', "invoked: "+" "+ invokeArr[0].value+" "+ invokeArr[1].value[2].value+ " "+invokeArr[1].value[3].value)
+//	fs.appendFileSync('./logs/invokes', "invoking: "+ " "+invokeArr[0].value+ " "+invokeArr[1].value[2].value+ " "+invokeArr[1].value[3].value)
+    const txHash = await InvokeFromAccount(0, 500, 0, 0, 0, scriptHash, "", node, "SharedPrivateNet", invokeArr)
+//	fs.appendFileSync('./logs/invokes', "invoked: "+" "+ invokeArr[0].value+" "+ invokeArr[1].value[2].value+ " "+invokeArr[1].value[3].value)
     const data = { jsonrpc: "2.0", id: 5, method: "getapplicationlog", params: [txHash] }
     var res;
 	do {
@@ -175,7 +175,7 @@ async function invoke(scriptHash, invokeArr){
 					fs.appendFileSync('./logs/invokes', itry +" "+JSON.stringify(err)+"\n");
                     return ""
                 });
-        if (itry>100) res = true
+        if (itry>10) res = true
         if (!res) sleep(1000)
     } while (!res)
     console.log(res)
@@ -193,35 +193,38 @@ async function SaveState(scriptHash){
 		pushParams(neonJSParams, 'Array', sigs);
 		//3 bigint[] xs
 		var xs = cmdArgs[3].split(",").map(Neon.sc.ContractParam.integer)
+//		pushParams(neonJSParams, 'Array', [xs[0], xs[1], xs[2], xs[3], xs[4], xs[4]]);
 		pushParams(neonJSParams, 'Array', xs);
 		//4 bigint[] ys
 		var ys = cmdArgs[4].split(",").map(Neon.sc.ContractParam.integer)
-		pushParams(neonJSParams, 'Array', ys);
+		console.log("yyyyyyys", xs)
+//		pushParams(neonJSParams, 'Array', [0])//ys.slice(0, 1));
 		//5 byte[][] signablebytes
 		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
-		pushParams(neonJSParams, 'Array', signableBytes);
+//		pushParams(neonJSParams, 'Array', signableBytes);
 		//6 byte[] blockhash
 		var header = cmdArgs[6]
-		pushParams(neonJSParams, 'Hex', header);
+//		pushParams(neonJSParams, 'Hex', header);
 		//7 ulong[][] pres
 		var pres = cmdArgs[7].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
-		pushParams(neonJSParams, 'Array', pres);
+//		pushParams(neonJSParams, 'Array', pres);
 		//8 ulong[][] preshash
 		var presHash = cmdArgs[8].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
-		pushParams(neonJSParams, 'Array', presHash);
+//		pushParams(neonJSParams, 'Array', presHash);
 		//9 bigint[] preshashmod
 		var presHashMod = cmdArgs[9].split(",").map(Neon.sc.ContractParam.integer)
-		pushParams(neonJSParams, 'Array', presHashMod);
+//		pushParams(neonJSParams, 'Array', presHashMod);
 		//10 bigint[][] sB
 		var sb = cmdArgs[10].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
-		pushParams(neonJSParams, 'Array', sb);
+//		pushParams(neonJSParams, 'Array', sb);
 		//11 bigint[][] ha
 		var ha = cmdArgs[11].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
-		pushParams(neonJSParams, 'Array', ha);
+//		pushParams(neonJSParams, 'Array', ha);
 		invokeArr = []
 		pushParams(invokeArr, 'String', "savestate");
 		pushParams(invokeArr, 'Array', neonJSParams);
 		await invoke(scriptHash, invokeArr)
+		return true;
 
 		//12 bigint[][] Qs_sb
 		//13 bigint[] ss_sb
@@ -394,7 +397,7 @@ function Challenge5(scriptHash){
         invoke(scriptHash, invokeArr)
 }
 
-var scriptHash = "8aea8eac3b09b55aa8bbb9f47acd15821002972d"
+var scriptHash = "8c8470b9845839afc2d606c8637242db126105de"
 SaveState(scriptHash)
 //Challenge5(scriptHash)
 //Challenge3(scriptHash)
