@@ -202,7 +202,7 @@ namespace smartBNB
                     8 ulong[][] preshash
                     9 bigint[] preshashmod
                     10 byte[] txproof*/
-                    if(!saveStateToStorage(0x0, (byte[])args[0], (byte[])args[1], (byte[][])args[2],(BigInteger[])args[3],(BigInteger[])args[4],(byte[][])args[5],(byte[])args[6],(ulong[][])args[7],(ulong[][])args[8],(BigInteger[])args[9],(byte[])args[10]))
+                    if(!saveStateToStorage(0x0, (byte[])args[0], (byte[])args[1], (byte[][])args[2],(BigInteger[])args[3],(BigInteger[])args[4],(byte[][])args[5],(byte[])args[6],(ulong[][])args[7],(ulong[][])args[8],(BigInteger[])args[9],(byte[])args[10], (byte[])args[11]))
                         return false;
     		    }
     		    else
@@ -216,18 +216,12 @@ namespace smartBNB
     		return false;
     	}
 
-        private static bool Validate(byte[] rawProof, byte[] rawHeader, byte[] rawSignatures)
+        private static bool Validate(byte[] rawProof, byte[] rawHeader)
         {
-            // Verify relationship with the block. Compares if hDataHash and txProofRootHash are equal
-            // TODO: Remove this comparison and compare hDataHash with computed hash from proof on TxValidation
-            if (!AreEqual(rawHeader.Range(158, 32), rawProof.Range(32,32)))
-                throw new Exception("Relationship with the signed block cannot be verified");            
-
-            // Verify signatures
-            VerifyBlock(rawHeader, rawSignatures);
+            // Verify relationship with the block. Compares if hDataHash and txProofRootHash are equal and merkle path is ok
 
             // Verify merkle tree
-            VerifyTx(rawProof);
+            VerifyTx(rawProof, rawHeader.Range(158, 32));
 
             return true;
         }
@@ -246,12 +240,12 @@ namespace smartBNB
             //Hashing header
             byte[] headerHash = SimpleHashFromByteSlices(headerSlices);
 
-            //Obtaining signatures
+            /*//Obtaining signatures
             byte[][] signatures = new byte[11][];
             for (int i = 0; i < 11; i++)
             {
                 signatures[i] = rawSignatures.Range(i*32, 32);
-            }
+            }*/
             /*
             if (!VerifySignatures(headerHash, signatures))
                 throw new Exception("Cruck");
@@ -259,19 +253,35 @@ namespace smartBNB
 
             return true;
         }
-
-        private static bool VerifyTx(byte[] proof)
+        
+        private static byte[] HashRawHeader(byte[] rawHeader)
         {
-            byte[] txProofRootHash = proof.Range(0, 32); //TODO: remove this + reindex ranges on unpacking
-            byte[] txProofLeafHash = proof.Range(32, 32);
-            int txProofIndex = proof.Range(64, 1)[0];
-            int txProofTotal = proof.Range(65, 1)[0];
+            //Obtaining header slices
+            byte[][] headerSlices = new byte[16][];
+            int accLen = 0;
+            for (int i = 0; i < 16; i++)
+            {
+                headerSlices[i] = rawHeader.Range(accLen+1, rawHeader[accLen]);
+                accLen += rawHeader[accLen]+1;
+            }
 
-            int len = proof.Range(66, proof.Length - 66).Length / 32;
+            //Hashing header
+            return SimpleHashFromByteSlices(headerSlices);
+
+        }
+
+        private static bool VerifyTx(byte[] proof, byte[] merkleRootFromHeader)
+        {
+            //byte[] txProofRootHash = proof.Range(0, 32); //TODO: remove this + reindex ranges on unpacking
+            byte[] txProofLeafHash = proof.Range(0, 32);
+            int txProofIndex = proof.Range(32, 1)[0];
+            int txProofTotal = proof.Range(33, 1)[0];
+
+            int len = proof.Range(34, proof.Length - 34).Length / 32;
             byte[][] txProofAunts = new byte[len][];
             for (int i = 0; i < len; i++)
             {
-                txProofAunts[i] = proof.Range(66 + (i * 32), 32);
+                txProofAunts[i] = proof.Range(34 + (i * 32), 32);
             }
 
             if (txProofIndex < 0)
@@ -282,8 +292,8 @@ namespace smartBNB
 
             byte[] computedHash = ComputeHashFromAunts(txProofIndex, txProofTotal, txProofLeafHash, txProofAunts);
             //TODO: change txProofRootHash for hDataHash get from Header
-            if (!AreEqual(computedHash, txProofRootHash))
-                throw new Exception("Invalid root hash");
+            if (!AreEqual(computedHash, merkleRootFromHeader))
+                return false;
 
             return true;
         }
@@ -956,6 +966,7 @@ namespace smartBNB
             public ulong[][] preHash;
             public BigInteger[] preHashMod;
             public byte[] txproof;
+            public byte[] blockHeader;
         }
         
 	    private static Object getStateFromStorage(byte state, byte[] collatId, byte[] txHash, params object[] args)
@@ -992,6 +1003,7 @@ namespace smartBNB
                     //challengeVars.hA = (BigInteger[][])args[9];//hA
                     Storage.Put("ezy", (byte[])args[8]);
                     challengeVars.txproof = (byte[])args[8];//txProof
+                    challengeVars.blockHeader = (byte[])args[9];//txProof
                     Storage.Put("hihere", challengeVars.txproof);
                     Storage.Put("0x0_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(challengeVars));
                     return true;
@@ -1020,7 +1032,8 @@ namespace smartBNB
             BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
             BigInteger R1_ySigHigh = challengeVars.ys[sigIndex];
             byte[] signableBytes = challengeVars.signableBytes[sigIndex];
-            byte[] blockHash = challengeVars.blockHash;
+            //byte[] blockHash = challengeVars.blockHash;
+            byte[] rawHeader = challengeVars.blockHeader;
             
             if (signature.Length!=64)
                 throw new Exception("Bad signature length");
@@ -1037,6 +1050,8 @@ namespace smartBNB
             BigInteger s = s_signatureLow.AsBigInteger();
             if (s>=q || s<0)
                 return false;
+            
+            byte[] blockHash = HashRawHeader(rawHeader);
             
             for (int i=0; i<32;i++)
             {
@@ -1228,7 +1243,8 @@ namespace smartBNB
             Storage.Put("t1", collatId);
             Storage.Put("t2", txHash);
             byte[] txproof = challengeVars.txproof;
-            return VerifyTx(txproof);
+            byte[] blockHeader = challengeVars.blockHeader;
+            return Validate(txproof, blockHeader);
         }
         
         public static BigInteger String2BigInteger(string str)

@@ -148,7 +148,8 @@ func Invoke(spv SPV) string {
 	spv.PresHashMod,
 	//spv.SB,
 	//spv.HA,
-	spv.TxProof).CombinedOutput()
+	spv.TxProof,
+	spv.Header).CombinedOutput()
 	/*spv.MulStepsSB,spv.MulStepsHA*/
 	if err != nil {
 		panic(err)
@@ -202,13 +203,13 @@ func GetProof(txHash string) SPV {
 	txProofAunts := restx.Proof.Proof.Aunts
 
 	//merkle root
-	txProofRootHash := restx.Proof.RootHash
+//	txProofRootHash := restx.Proof.RootHash
 
 	//getting block info to get data hash
 	resBlock, _ := client.Block(&txBlockHeight)
 	//paq <- (txProofRootHash | txProofLeafHash | txProofIndex | txProofTotal | txProofAunts... )
 	paq := make([]byte, 0)
-	paq = append(paq, txProofRootHash[:]...)
+	//paq = append(paq, txProofRootHash[:]...)
 	paq = append(paq, txProofLeafHash[:]...)
 	paq = append(paq, []byte{byte(txProofIndex)}...)//Warning: assuming txProofIndex always < byteSize
 	paq = append(paq, []byte{byte(txProofTotal)}...)//Warning: assuming txProofTotal always < byteSize

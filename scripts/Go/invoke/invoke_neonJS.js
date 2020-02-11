@@ -215,6 +215,9 @@ async function SaveState(scriptHash){
 		//10 byte[] txproof
 		console.log(cmdArgs[10])
 		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
+		//11 byte[] blockHeader
+		console.log(cmdArgs[11])
+		pushParams(neonJSParams, 'Hex', cmdArgs[11]);
 		//10 bigint[][] sB
 //		var sb = cmdArgs[10].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
 //		pushParams(neonJSParams, 'Array', sb);
@@ -243,9 +246,9 @@ async function SaveState(scriptHash){
 			Ps_sb = Ps_sb.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-		await savePointMuls(Ps_sb, 2, "Ps_sb", "multi")
-		await savePointMuls(ss_sb, 2, "ss_sb", "simple")
-		await savePointMuls(Qs_sb, 2, "Qs_sb", "multi")
+//		await savePointMuls(Ps_sb, 2, "Ps_sb", "multi")
+//		await savePointMuls(ss_sb, 2, "ss_sb", "simple")
+//		await savePointMuls(Qs_sb, 2, "Qs_sb", "multi")
 
 		
 		//Second invoke, state pointmul ha
@@ -263,9 +266,9 @@ async function SaveState(scriptHash){
 			Ps_ha = Ps_ha.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-		await savePointMuls(Ps_ha, 2, "Ps_ha", "multi")
-		await savePointMuls(ss_ha, 2, "ss_ha", "simple")
-		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
+//		await savePointMuls(Ps_ha, 2, "Ps_ha", "multi")
+//		await savePointMuls(ss_ha, 2, "ss_ha", "simple")
+//		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
 }
 
 async function savePointMuls(arr, nchks, id, type) {
@@ -412,7 +415,7 @@ function Challenge6(scriptHash){
 
 }
 
-var scriptHash = "0dd507529f85a1851ec5454b34a228b1503f25c1"
+var scriptHash = "db47507ffdd7b19663b2c176ab873b60f3f20395"
 //SaveState(scriptHash)
 Challenge6(scriptHash)
 //Challenge4(scriptHash)
