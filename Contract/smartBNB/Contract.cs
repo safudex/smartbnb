@@ -76,7 +76,7 @@ namespace smartBNB
 
             if (Runtime.Trigger == TriggerType.Application)
             {
-                if(operation=="savestate")
+                if(operation=="savestate"){
                     /* ARGS
                     0 byte[] collatid
                     1 byte[] txid
@@ -96,6 +96,7 @@ namespace smartBNB
                     //Storage.Put("op", ((BigInteger[][])args[12])[0][0]);
                     //return false;
                     return SaveChallengeState(false, args);
+                }
                 else if(operation=="savestate_mul")
                     /* ARGS
                     0 byte[] collatid
@@ -167,6 +168,17 @@ namespace smartBNB
                     Storage.Put("rrr", res==true?"y":"n");
                     return res;
                 }
+                else if(operation=="challenge 6"){
+                    /* ARGS
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 int signature index
+                    3 int step num
+                    4 string mulid*/
+                    bool res = ChallengeTxProof((byte[])args[0], (byte[])args[1]);
+                    Storage.Put("rrr", res==true?"yyy":"nn");
+                    return res;
+                }
                 else
                     return false;
             }
@@ -189,9 +201,8 @@ namespace smartBNB
                     7 ulong[][] pres
                     8 ulong[][] preshash
                     9 bigint[] preshashmod
-                    10 bigint[][] sB
-                    11 bigint[][] hb*/
-                    if(!saveStateToStorage(0x0, (byte[])args[0], (byte[])args[1], (byte[][])args[2],(BigInteger[])args[3],(BigInteger[])args[4],(byte[][])args[5],(byte[])args[6],(ulong[][])args[7],(ulong[][])args[8],(BigInteger[])args[9],(BigInteger[][])args[10],(BigInteger[][])args[11]))
+                    10 byte[] txproof*/
+                    if(!saveStateToStorage(0x0, (byte[])args[0], (byte[])args[1], (byte[][])args[2],(BigInteger[])args[3],(BigInteger[])args[4],(byte[][])args[5],(byte[])args[6],(ulong[][])args[7],(ulong[][])args[8],(BigInteger[])args[9],(byte[])args[10]))
                         return false;
     		    }
     		    else
@@ -944,8 +955,7 @@ namespace smartBNB
             public ulong[][] pre;
             public ulong[][] preHash;
             public BigInteger[] preHashMod;
-            public BigInteger[][] sB;
-            public BigInteger[][] hA;
+            public byte[] txproof;
         }
         
 	    private static Object getStateFromStorage(byte state, byte[] collatId, byte[] txHash, params object[] args)
@@ -978,8 +988,11 @@ namespace smartBNB
                     challengeVars.pre = (ulong[][])args[5];//pre
                     challengeVars.preHash = (ulong[][])args[6];//preHash
                     challengeVars.preHashMod = (BigInteger[])args[7];//preHashMod
-                    challengeVars.sB = (BigInteger[][])args[8];//sB
-                    challengeVars.hA = (BigInteger[][])args[9];//hA
+                    //challengeVars.sB = (BigInteger[][])args[8];//sB
+                    //challengeVars.hA = (BigInteger[][])args[9];//hA
+                    Storage.Put("ezy", (byte[])args[8]);
+                    challengeVars.txproof = (byte[])args[8];//txProof
+                    Storage.Put("hihere", challengeVars.txproof);
                     Storage.Put("0x0_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(challengeVars));
                     return true;
             }else if(state == 0x1){
@@ -1206,6 +1219,16 @@ namespace smartBNB
                 return true;
             else
                 return false;
+        }
+        
+        private static bool ChallengeTxProof(byte[] collatId, byte[] txHash)
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
+            Storage.Put("t1", collatId);
+            Storage.Put("t2", txHash);
+            byte[] txproof = challengeVars.txproof;
+            return VerifyTx(txproof);
         }
         
         public static BigInteger String2BigInteger(string str)

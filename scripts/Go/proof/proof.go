@@ -99,7 +99,7 @@ func GetPointMulSteps(isHA string, sigint string, its string, pubk string) strin
 	}
 	r := strings.Split(string(out), "\n")
 	joined := ""
-	fmt.Print(string(sigint)+"\n")
+//	fmt.Print(string(sigint)+"\n")
 	s:=""
 	P:=""
 	Q:=""
@@ -146,8 +146,9 @@ func Invoke(spv SPV) string {
 	spv.PresMsg,
 	spv.PresHash,
 	spv.PresHashMod,
-	spv.SB,
-	spv.HA,).CombinedOutput()
+	//spv.SB,
+	//spv.HA,
+	spv.TxProof).CombinedOutput()
 	/*spv.MulStepsSB,spv.MulStepsHA*/
 	if err != nil {
 		panic(err)
@@ -195,6 +196,7 @@ func GetProof(txHash string) SPV {
 
 	//tx leaf hash
 	txProofLeafHash := restx.Proof.Proof.LeafHash
+	fmt.Println(txProofLeafHash)
 
 	//merkle path
 	txProofAunts := restx.Proof.Proof.Aunts

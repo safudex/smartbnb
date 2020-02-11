@@ -212,12 +212,15 @@ async function SaveState(scriptHash){
 		//9 bigint[] preshashmod
 		var presHashMod = cmdArgs[9].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', presHashMod);
+		//10 byte[] txproof
+		console.log(cmdArgs[10])
+		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
 		//10 bigint[][] sB
-		var sb = cmdArgs[10].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
-		pushParams(neonJSParams, 'Array', sb);
+//		var sb = cmdArgs[10].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
+//		pushParams(neonJSParams, 'Array', sb);
 		//11 bigint[][] ha
-		var ha = cmdArgs[11].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
-		pushParams(neonJSParams, 'Array', ha);
+//		var ha = cmdArgs[11].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
+//		pushParams(neonJSParams, 'Array', ha);
 		invokeArr = []
 		pushParams(invokeArr, 'String', "savestate");
 		pushParams(invokeArr, 'Array', neonJSParams);
@@ -394,7 +397,22 @@ function Challenge5(scriptHash){
         invoke(scriptHash, invokeArr)
 }
 
-var scriptHash = "ce507794aa5c3662bd4676fd2c3cc09a1483a2c7"
+function Challenge6(scriptHash){
+        var neonJSParams = [];
+
+        //0 byte[] calleraddr
+        pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+        //1 byte[] txid
+        pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
+
+        var invokeArr = []
+        pushParams(invokeArr, 'String', "challenge 6");
+        pushParams(invokeArr, 'Array', neonJSParams);
+        invoke(scriptHash, invokeArr)
+
+}
+
+var scriptHash = "0dd507529f85a1851ec5454b34a228b1503f25c1"
 //SaveState(scriptHash)
-Challenge5(scriptHash)
+Challenge6(scriptHash)
 //Challenge4(scriptHash)
