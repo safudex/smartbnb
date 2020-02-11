@@ -285,14 +285,14 @@ namespace smartBNB
             }
 
             if (txProofIndex < 0)
-                throw new Exception("Proof index cannot be negative");
+                return false;//throw new Exception("Proof index cannot be negative");
             if (txProofTotal <= 0)
-                throw new Exception("Proof total must be positive");
+                return false;//throw new Exception("Proof total must be positive");
 
 
             byte[] computedHash = ComputeHashFromAunts(txProofIndex, txProofTotal, txProofLeafHash, txProofAunts);
             //TODO: change txProofRootHash for hDataHash get from Header
-            if (!AreEqual(computedHash, merkleRootFromHeader))
+            if (computedHash == null || !AreEqual(computedHash, merkleRootFromHeader))
                 return false;
 
             return true;
@@ -306,7 +306,7 @@ namespace smartBNB
             switch (total)
             {
                 case 0:
-                    throw new Exception("Cannot call computeHashFromAunts() with 0 total");
+                    return null;//throw new Exception("Cannot call computeHashFromAunts() with 0 total");//MODIFIED,to CHECK IF THIS RESULT TO A FAULT OR CAN BE USED maliciously
                 case 1:
                     if (innerHashes.Length != 0)
                         return null;
@@ -316,6 +316,9 @@ namespace smartBNB
                         return null;
 
                     int numLeft = GetSplitPoint(total);
+                    if(numLeft==-1)
+                        return null;
+                        
                     if (index < numLeft)
                     {
                         byte[] leftHash = ComputeHashFromAunts(index, numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
@@ -339,7 +342,7 @@ namespace smartBNB
         private static int GetSplitPoint(int length)
         {
             if (length < 1)
-                throw new Exception("Trying to split a tree with size < 1");
+                return -1;//throw new Exception("Trying to split a tree with size < 1");
 
             return (length % 2 == 0) ? length / 2 : (length + 1) / 2;
         }
@@ -395,6 +398,9 @@ namespace smartBNB
                     return LeafHash(slices[0]);
                 default:
                     int k = GetSplitPoint(slices.Length);
+                    if (k==-1)
+                        return null;
+                        
                     byte[] left = SimpleHashFromByteSlices(TakeArrays(slices, 0, k-1));
                     byte[] right = SimpleHashFromByteSlices(TakeArrays(slices, k, slices.Length-1));
                     return InnerHash(left, right);
@@ -851,12 +857,12 @@ namespace smartBNB
 			BigInteger d = byteD.AsBigInteger();
             
             if (signature.Length!=64)
-                throw new Exception("Bad signature length");
+                return false;//throw new Exception("Bad signature length");
             
             byte[] Rs_signatureHigh = signature.Range(0, 32);
              
             if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
-                throw new Exception("Relationship between compressed and decompressed public point not found");
+                return false;//throw new Exception("Relationship between compressed and decompressed public point not found");
                 
             byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
             BigInteger q = q_bytes.AsBigInteger();
@@ -869,13 +875,13 @@ namespace smartBNB
             for (int i=0; i<32;i++)
             {
                 if(blockHash[i]!=signableBytes[16+i])
-                    throw new Exception("Hash not contained in signBytes");
+                    return false;//throw new Exception("Hash not contained in signBytes");
             }
             
             byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
             
             if (!checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1])){
-                throw new Exception("Wrong padded message");
+                return false;//throw new Exception("Wrong padded message");
             }
 
             ulong[] hash = sha512(pre);
@@ -1036,12 +1042,12 @@ namespace smartBNB
             byte[] rawHeader = challengeVars.blockHeader;
             
             if (signature.Length!=64)
-                throw new Exception("Bad signature length");
+                return false;//throw new Exception("Bad signature length");
             
             byte[] Rs_signatureHigh = signature.Range(0, 32);
             
             if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
-                throw new Exception("Relationship between compressed and decompressed public point not found");
+                return false;//throw new Exception("Relationship between compressed and decompressed public point not found");
                
             byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
             BigInteger q = q_bytes.AsBigInteger();
@@ -1056,7 +1062,7 @@ namespace smartBNB
             for (int i=0; i<32;i++)
             {
                 if(blockHash[i]!=signableBytes[16+i])
-                    throw new Exception("Hash not contained in signableBytes");
+                    return false;//throw new Exception("Hash not contained in signableBytes");
             }
             
             return true;

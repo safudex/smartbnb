@@ -246,9 +246,9 @@ async function SaveState(scriptHash){
 			Ps_sb = Ps_sb.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-//		await savePointMuls(Ps_sb, 2, "Ps_sb", "multi")
-//		await savePointMuls(ss_sb, 2, "ss_sb", "simple")
-//		await savePointMuls(Qs_sb, 2, "Qs_sb", "multi")
+		await savePointMuls(Ps_sb, 2, "Ps_sb", "multi")
+		await savePointMuls(ss_sb, 2, "ss_sb", "simple")
+		await savePointMuls(Qs_sb, 2, "Qs_sb", "multi")
 
 		
 		//Second invoke, state pointmul ha
@@ -266,9 +266,9 @@ async function SaveState(scriptHash){
 			Ps_ha = Ps_ha.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-//		await savePointMuls(Ps_ha, 2, "Ps_ha", "multi")
-//		await savePointMuls(ss_ha, 2, "ss_ha", "simple")
-//		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
+		await savePointMuls(Ps_ha, 2, "Ps_ha", "multi")
+		await savePointMuls(ss_ha, 2, "ss_ha", "simple")
+		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
 }
 
 async function savePointMuls(arr, nchks, id, type) {
@@ -415,7 +415,7 @@ function Challenge6(scriptHash){
 
 }
 
-var scriptHash = "db47507ffdd7b19663b2c176ab873b60f3f20395"
+var scriptHash = "a5372367ea1932d01c81bfcf1ec9d3dc8144c645"
 //SaveState(scriptHash)
 Challenge6(scriptHash)
 //Challenge4(scriptHash)
