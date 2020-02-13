@@ -179,7 +179,7 @@ func GetProof(txHash string) SPV {
 	spv := SPV{}
 	spv.TxId = txHash
 	//init rpc client
-	nodeAddr := "http://127.0.0.1:27147"
+	nodeAddr := "http://dataseed1.binance.org:80"
 	client := rpc.NewRPCClient(nodeAddr, ctypes.ProdNetwork)
 	//getting tx from node
 	bytesTxHash, _ := hex.DecodeString(txHash)
