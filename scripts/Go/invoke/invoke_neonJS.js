@@ -187,7 +187,7 @@ async function SaveState(scriptHash){
 		//0 byte[] calleraddr
 		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
 		//1 byte[] txid
-		pushParams(neonJSParams, 'Hex', cmdArgs[1]);
+		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6")//cmdArgs[1]);
 		//2 byte[][] signatures
 		var sigs = cmdArgs[2].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', sigs);
@@ -322,6 +322,7 @@ function Challenge1(scriptHash){
 
 		//0 byte[] calleraddr
 		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+		console.log(ECO_WALLET._address)
 		//1 byte[] txid
 		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
 		//2 int signature id
@@ -373,7 +374,7 @@ function Challenge4(scriptHash){
 		//1 byte[] txid
 		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
 		//2 int signature id
-		pushParams(neonJSParams, 'Integer', 0);
+		pushParams(neonJSParams, 'Integer', 7);
 		var invokeArr = []
 		pushParams(invokeArr, 'String', "challenge 4");
 		pushParams(invokeArr, 'Array', neonJSParams);
@@ -392,7 +393,7 @@ function Challenge5(scriptHash){
         pushParams(neonJSParams, 'Integer', 0);
         //3 int step num
         pushParams(neonJSParams, 'Integer', 0)
-        pushParams(neonJSParams, 'String', "ha");
+        pushParams(neonJSParams, 'String', "sb");
 
         var invokeArr = []
         pushParams(invokeArr, 'String', "challenge 5");
@@ -415,7 +416,6 @@ function Challenge6(scriptHash){
 
 }
 
-var scriptHash = "a5372367ea1932d01c81bfcf1ec9d3dc8144c645"
+var scriptHash = "e4596b1b1a65ab641485e3a593ad0264aa3583f2"
 //SaveState(scriptHash)
-Challenge6(scriptHash)
-//Challenge4(scriptHash)
+Challenge4(scriptHash)

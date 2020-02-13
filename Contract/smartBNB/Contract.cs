@@ -154,7 +154,7 @@ namespace smartBNB
                     1 byte[] txid
                     2 int signature index*/
                     bool respe = ChallengePointEqual((byte[])args[0], (byte[])args[1], (int)args[2], p, d);
-                    Storage.Put("rrrpe", respe==true?"y":"n");
+                    Storage.Put("rrrpe", respe==true?"yes":"no");
                     return respe;
                 }
                 else if(operation=="challenge 5"){
@@ -946,10 +946,12 @@ namespace smartBNB
         {
             if (bytes.Length == 0)
             {
+                Storage.Put("otb", "len0");
                 return new object();
             }
             else
             {
+                Storage.Put("otb", "diff");
                 object[] objs = (object[])Helper.Deserialize(bytes);
                 return (object)objs;
             }
@@ -980,15 +982,19 @@ namespace smartBNB
             //Storage.Put("ok", "ok");
             if (state == 0x0)
             {
-                return BytesToObject(Storage.Get("0x0_"+collatId.AsString()+"_"+txHash.AsString()));
+                string id = "0x0_"+collatId.AsString()+"_"+txHash.AsString();
+                Storage.Put("ok", id);
+                return BytesToObject(Storage.Get(id));
             }
             else if (state == 0x1)
             {
+                Storage.Put("ok", "ok1");
                 string s = collatId.AsString()+txHash.AsString()+(string)args[0];
-                return BytesToObject(Storage.Get(collatId.AsString()+txHash.AsString()+(string)args[0]));
+                return BytesToObject(Storage.Get(s));
             }
             else
             {
+                Storage.Put("ok", "ok0emty");
                 return new Object();
             }
         }
@@ -1007,11 +1013,12 @@ namespace smartBNB
                     challengeVars.preHashMod = (BigInteger[])args[7];//preHashMod
                     //challengeVars.sB = (BigInteger[][])args[8];//sB
                     //challengeVars.hA = (BigInteger[][])args[9];//hA
-                    Storage.Put("ezy", (byte[])args[8]);
                     challengeVars.txproof = (byte[])args[8];//txProof
                     challengeVars.blockHeader = (byte[])args[9];//txProof
-                    Storage.Put("hihere", challengeVars.txproof);
-                    Storage.Put("0x0_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(challengeVars));
+                    Storage.Put("d1", challengeVars.xs[0]);
+                    string s = "0x0_"+callerAddr.AsString()+"_"+txHash.AsString();
+                    Storage.Put("d3", s);
+                    Storage.Put(s, ObjectToBytes(challengeVars));
                     return true;
             }else if(state == 0x1){
 
@@ -1111,8 +1118,8 @@ namespace smartBNB
         
         private static bool ChallengePointEqual(byte[] collatId, byte[] txHash, int sigIndex, BigInteger p, BigInteger d)
         {
-            int iint = 32;
-            int istep = (sigIndex*32+iint-1)%128;
+            int iint = 31;
+            int istep = (sigIndex*32+iint)%128;
             int iarr = (iint+sigIndex*32)/128; 
             string bs_sb = "sb"+((BigInteger)(iarr+48)).AsByteArray().AsString();
             string bs_ha = "ha"+((BigInteger)(iarr+48)).AsByteArray().AsString();
@@ -1122,11 +1129,14 @@ namespace smartBNB
             BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(0x1, collatId, txHash, Qbs);
             Qbs = "Qs_"+bs_ha;
             BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(0x1, collatId, txHash, Qbs);
+            BigInteger[] sB = Qssb[istep];//challengeVars.sB[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
+            BigInteger[] hA = Qsha[istep];//challengeVars.hA[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
             
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
-            BigInteger[] sB = Qssb[istep];//challengeVars.sB[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
-            BigInteger[] hA = Qsha[istep];//challengeVars.hA[sigIndex];//TODO GET DATA FROM POINTMUL RESULTS
+            Storage.Put("collat",  collatId);
+            Storage.Put("tx",  txHash);
+
             BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
             BigInteger R1_ySigHigh = challengeVars.ys[sigIndex];
 
