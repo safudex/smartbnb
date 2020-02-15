@@ -1289,5 +1289,74 @@ namespace smartBNB
             return res;
         }
         
+        private static bool ChallengeCheckBytesV2(byte[] collatId, byte[] txHash, int sigIndex, byte[] pubK)
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
+            ulong[] pre = challengeVars.pre[sigIndex];
+            byte[] signature = challengeVars.signature[sigIndex];
+            byte[] signableBytes = challengeVars.signableBytes[sigIndex];
+            byte[] Rs_signatureHigh = signature.Range(0, 32);
+            byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
+            byte[] preBytes = ObjectToBytes(pre);
+            Storage.Put("l1", preBytes.Length);
+            Storage.Put("l2", hashableBytes.Length);
+            return CheckBytesv2(preBytes, hashableBytes);
+        }
+        
+        private static bool CheckBytesv2(byte[] preBytes, byte[] bytes)
+        { //realize test!!!!
+            bool end = false;
+            
+            int ipreB = 0;
+            int ib = 0;
+            int len = 1;
+            
+            while(ipreB < preBytes.Length)//TODO ASSERT CONDITION
+            {
+                ipreB += len+2;
+                len = preBytes[ipreB];
+                
+                if (len==0)
+                    continue;
+                
+                if(!end){
+                    for (int j = 0; j<(8-len); j++)
+                    {
+                        if (bytes[ib] != 0)
+                        {
+                            return false;
+                        }
+                        ib++;
+                    }
+                    for (int i=len; i>0; i--)
+                    {
+                        if(ib == bytes.Length && preBytes[ipreB+i] == 0x80)
+                        {
+                            end = true;
+                        }
+                        else if (!end && preBytes[ipreB+i] != bytes[ib])
+                            return false;
+                        else if (end && preBytes[ipreB+i] != 0)
+                            return false;
+                        else
+                            ib++;
+                    }
+                }
+                else
+                {
+                    BigInteger ulen = bytes.Length*8;
+                    byte[] b_ulen = ulen.AsByteArray();
+                    for (int i=0; i<len; i++)
+                    {
+                        if (preBytes[ipreB+i+1]!=b_ulen[i])
+                            return false;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+        
     }
 }
