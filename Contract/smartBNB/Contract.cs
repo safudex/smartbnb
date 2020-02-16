@@ -126,12 +126,16 @@ namespace smartBNB
                     2 int signature index*/
                     return ChallengeInitialChecks((byte[])args[0], (byte[])args[1], (int)args[2], p);
                 else if(operation=="challenge 1")
+                {
                     /* ARGS
                     0 byte[] collatid
                     1 byte[] txid
                     2 int signature index
                     3 byte[] signPubK*/
-                    return ChallengeCheckBytes((byte[])args[0], (byte[])args[1], (int)args[2], pubks[(int)args[2]]);
+                    bool r = ChallengeCheckBytesV2((byte[])args[0], (byte[])args[1], (int)args[2], pubks[(int)args[2]]);
+                    Storage.Put("r", r?"true":"false");
+                    return r;
+                }
                 else if(operation=="challenge 2")
                     /* ARGS
                     0 byte[] collatid
@@ -1301,6 +1305,7 @@ namespace smartBNB
             byte[] preBytes = ObjectToBytes(pre);
             Storage.Put("l1", preBytes.Length);
             Storage.Put("l2", hashableBytes.Length);
+            Storage.Put("l3", preBytes);
             return CheckBytesv2(preBytes, hashableBytes);
         }
         
@@ -1331,10 +1336,14 @@ namespace smartBNB
                     }
                     for (int i=len; i>0; i--)
                     {
+                        if(i > 8)
+                            if(preBytes[ipreB+i] == 0)
+                                continue;
+                            else
+                                return false;
+
                         if(ib == bytes.Length && preBytes[ipreB+i] == 0x80)
-                        {
                             end = true;
-                        }
                         else if (!end && preBytes[ipreB+i] != bytes[ib])
                             return false;
                         else if (end && preBytes[ipreB+i] != 0)
