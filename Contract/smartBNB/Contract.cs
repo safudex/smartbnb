@@ -255,11 +255,15 @@ namespace smartBNB
         private static bool Validate(byte[] rawProof, byte[] rawHeader)
         {
             // Verify relationship with the block. Compares if hDataHash and txProofRootHash are equal and merkle path is ok
-
-            // Verify merkle tree
-            VerifyTx(rawProof, rawHeader.Range(158, 32));
-
-            return true;
+            int accLen = 0;
+            //getting hDataHash
+            for (int i = 0; i < 8; i++)
+            {
+                accLen += rawHeader[accLen]+1;
+            }
+            Storage.Put("is", rawHeader.Range(accLen+2, rawHeader[accLen]-1));
+            Storage.Put("expected", rawHeader.Range(158, 32));
+            return VerifyTx(rawProof, rawHeader.Range(accLen+2, rawHeader[accLen]-1));//+2 because header slices are cdcEncoded (index 0 is length) -1
         }
 
         private static bool VerifyBlock(byte[] rawHeader, byte[] rawSignatures)
@@ -325,8 +329,16 @@ namespace smartBNB
             if (txProofTotal <= 0)
                 return false;//throw new Exception("Proof total must be positive");
 
+            Storage.Put("param1", txProofIndex);
+            Storage.Put("param2", txProofTotal);
+            Storage.Put("param3", txProofLeafHash);
+            Storage.Put("param4", txProofAunts[0]);
 
             byte[] computedHash = ComputeHashFromAunts(txProofIndex, txProofTotal, txProofLeafHash, txProofAunts);
+            Storage.Put("computed", computedHash);
+            Storage.Put("proof", proof);
+            Storage.Put("txProofAuntslen", txProofAunts.Length);
+            Storage.Put("txProofAunts", txProofAunts[0]);
             //TODO: change txProofRootHash for hDataHash get from Header
             if (computedHash == null || !AreEqual(computedHash, merkleRootFromHeader))
                 return false;
@@ -336,30 +348,41 @@ namespace smartBNB
 
         private static byte[] ComputeHashFromAunts(int index, int total, byte[] leafHash, byte[][] innerHashes)
         {
-            if (index >= total)
+            if (index >= total){
+                Storage.Put("where", "case");
                 return null;
+            }
 
             switch (total)
             {
                 case 0:
+                    Storage.Put("where", "case0");
                     return null;//throw new Exception("Cannot call computeHashFromAunts() with 0 total");//MODIFIED,to CHECK IF THIS RESULT TO A FAULT OR CAN BE USED maliciously
                 case 1:
-                    if (innerHashes.Length != 0)
+                    if (innerHashes.Length != 0){
+                        Storage.Put("where", "case1");
                         return null;
+                    }
                     return leafHash;
                 default:
-                    if (innerHashes.Length == 0)
+                    if (innerHashes.Length == 0){
+                        Storage.Put("where", "casedefault0");
                         return null;
+                    }
 
                     int numLeft = GetSplitPoint(total);
-                    if(numLeft==-1)
+                    if(numLeft<1){
+                        Storage.Put("numLeft", numLeft==-1?"trye":"false");
+                        Storage.Put("where", "casedefault1");
                         return null;
+                    }
                         
                     if (index < numLeft)
                     {
                         byte[] leftHash = ComputeHashFromAunts(index, numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
                         if (leftHash == null)
                         {
+                            Storage.Put("where", "casedefault2");
                             return null;
                         }
                         return InnerHash(leftHash, innerHashes[innerHashes.Length - 1]);
@@ -368,6 +391,7 @@ namespace smartBNB
                     byte[] rightHash = ComputeHashFromAunts(index - numLeft, total - numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
                     if (rightHash == null)
                     {
+                        Storage.Put("where", "casedefault3");
                         return null;
                     }
                     return InnerHash(innerHashes[innerHashes.Length - 1], rightHash);
@@ -377,8 +401,10 @@ namespace smartBNB
         // returns the largest power of 2 less than length
         private static int GetSplitPoint(int length)
         {
-            if (length < 1)
-                return -1;//throw new Exception("Trying to split a tree with size < 1");
+            if (length < 1){
+                Storage.Put("m", length);
+                return 0;//throw new Exception("Trying to split a tree with size < 1");
+            }
 
             return (length % 2 == 0) ? length / 2 : (length + 1) / 2;
         }
