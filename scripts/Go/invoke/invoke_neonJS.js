@@ -183,6 +183,7 @@ async function invoke(scriptHash, invokeArr){
 }
 const cmdArgs = process.argv.slice(2)
 async function SaveState(scriptHash){
+		console.log("headerHash", cmdArgs[6])
 		var neonJSParams = [];
 		//0 byte[] calleraddr
 		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
@@ -201,21 +202,21 @@ async function SaveState(scriptHash){
 		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', signableBytes);
 		//6 byte[] blockhash
-		var header = cmdArgs[6]
-		pushParams(neonJSParams, 'Hex', header);
-		//7 ulong[][] pres
+//		var header = cmdArgs[6]
+//		pushParams(neonJSParams, 'Hex', header);
+		//6 ulong[][] pres
 		var pres = cmdArgs[7].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
 		pushParams(neonJSParams, 'Array', pres);
-		//8 ulong[][] preshash
+		//7 ulong[][] preshash
 		var presHash = cmdArgs[8].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
 		pushParams(neonJSParams, 'Array', presHash);
-		//9 bigint[] preshashmod
+		//8 bigint[] preshashmod
 		var presHashMod = cmdArgs[9].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', presHashMod);
-		//10 byte[] txproof
+		//9 byte[] txproof
 		console.log(cmdArgs[10])
 		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
-		//11 byte[] blockHeader
+		//10 byte[] blockHeader
 		console.log(cmdArgs[11])
 		pushParams(neonJSParams, 'Hex', cmdArgs[11]);
 		//10 bigint[][] sB
@@ -284,7 +285,7 @@ async function savePointMuls(arr, nchks, id, type) {
 				console.log(id+i)
 				pushParams(neonJSParams, 'Array', arr.slice(i*j, (i+1)*j))
 				var invokeArr = []
-				pushParams(invokeArr, 'String', "savestate_mul");
+				pushParams(invokeArr, 'String', "savestate");
 				pushParams(invokeArr, 'Array', neonJSParams);
 				console.log("invokeing...", i)
 				console.log(invokeArr[1].value[4].value[0])
@@ -326,7 +327,7 @@ function Challenge1(scriptHash){
 		//1 byte[] txid
 		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
 		//2 int signature id
-		pushParams(neonJSParams, 'Integer', 0);
+		pushParams(neonJSParams, 'Integer', 7);
 		var invokeArr = []
 		pushParams(invokeArr, 'String', "challenge 1");
 		pushParams(invokeArr, 'Array', neonJSParams);
@@ -416,6 +417,22 @@ function Challenge6(scriptHash){
 
 }
 
-var scriptHash = "e4596b1b1a65ab641485e3a593ad0264aa3583f2"
+function IsSaved(scriptHash){
+        var neonJSParams = [];
+
+        //0 byte[] calleraddr
+        pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+        //1 byte[] txid
+        pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
+
+        var invokeArr = []
+        pushParams(invokeArr, 'String', "proofIsSaved");
+        pushParams(invokeArr, 'Array', neonJSParams);
+        invoke(scriptHash, invokeArr)
+}
+
+
+var scriptHash = "2cb9dab0163afff1387f1e2115becd6c518c644b"
 //SaveState(scriptHash)
-Challenge4(scriptHash)
+Challenge0(scriptHash)
+//IsSaved(scriptHash)
