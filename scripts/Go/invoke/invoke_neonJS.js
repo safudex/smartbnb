@@ -164,11 +164,11 @@ async function invoke(scriptHash, invokeArr){
     const data = { jsonrpc: "2.0", id: 5, method: "getapplicationlog", params: [txHash] }
     var res;
 	do {
-		console.log("testing status")
         res = await axios.post(node, data)
                 .then((res) => {
 					fs.appendFileSync('./logs/invokes', itry +" "+JSON.stringify(res.data)+"\n");
-                    console.log(itry++, res.data)
+//                    console.log(itry++)
+//                    itry++
                     console.log(res.data.result.executions[0].gas_consumed)
                     return res.data.result.executions[0].vmstate;
                 }).catch((err) => {
@@ -183,21 +183,24 @@ async function invoke(scriptHash, invokeArr){
 }
 const cmdArgs = process.argv.slice(2)
 async function SaveState(scriptHash){
-		console.log("headerHash", cmdArgs[6])
 		var neonJSParams = [];
 		//0 byte[] calleraddr
 		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
 		//1 byte[] txid
 		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6")//cmdArgs[1]);
-		//2 byte[][] signatures
+		//2 byte[][] signatures 
 		var sigs = cmdArgs[2].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', sigs);
+		console.log("sigs", sigs)
 		//3 bigint[] xs
 		var xs = cmdArgs[3].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', xs);
+		console.log("xs", xs)
 		//4 bigint[] ys
 		var ys = cmdArgs[4].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', ys);
+		console.log("ys", ys)
+		//4 bigint[] ys
 		//5 byte[][] signablebytes
 		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', signableBytes);
@@ -272,6 +275,10 @@ async function SaveState(scriptHash){
 		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
 }
 
+var a = [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]]
+
+
+
 async function savePointMuls(arr, nchks, id, type) {
 		var j = arr.length/nchks
 		for (var i=0; i<nchks; i++) {
@@ -287,8 +294,6 @@ async function savePointMuls(arr, nchks, id, type) {
 				var invokeArr = []
 				pushParams(invokeArr, 'String', "savestate");
 				pushParams(invokeArr, 'Array', neonJSParams);
-				console.log("invokeing...", i)
-				console.log(invokeArr[1].value[4].value[0])
 				await invoke(scriptHash, invokeArr)
 		}
 }
@@ -310,7 +315,7 @@ function Challenge0(scriptHash){
 		//1 byte[] txid
 		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
 		//2 int signature id
-		pushParams(neonJSParams, 'Integer', 1);
+		pushParams(neonJSParams, 'Integer', 0);
 		var invokeArr = []
 		pushParams(invokeArr, 'String', "challenge 0");
 		pushParams(invokeArr, 'Array', neonJSParams);
@@ -430,9 +435,23 @@ function IsSaved(scriptHash){
         pushParams(invokeArr, 'Array', neonJSParams);
         invoke(scriptHash, invokeArr)
 }
+function RemoveStorage(scriptHash){
+        var neonJSParams = [];
+
+        //0 byte[] calleraddr
+        pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+        //1 byte[] txid
+        pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
+
+        var invokeArr = []
+        pushParams(invokeArr, 'String', "removeStorage");
+        pushParams(invokeArr, 'Array', neonJSParams);
+        invoke(scriptHash, invokeArr)
+}
 
 
-var scriptHash = "2cb9dab0163afff1387f1e2115becd6c518c644b"
+var scriptHash = "9746e28d8fd2ef0ef5c7c5ff7dfe032474294d21"
 //SaveState(scriptHash)
-Challenge0(scriptHash)
+Challenge4(scriptHash)
 //IsSaved(scriptHash)
+//RemoveStorage(scriptHash)
