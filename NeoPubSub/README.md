@@ -13,7 +13,11 @@ cd NeoPubSub
 dotnet publish -c Release
 cp -r ./NeoPubSub {neo-cli folder}/Plugins
 cp ./bin/Release/netstandard2.0/publish/NeoPubSub.dll {neo-cli folder}/Plugins
-cp ./bin/Release/netstandard2.0/publish/Redis*.dll {neo-cli folder}
+cp ./bin/Release/netstandard2.0/publish/StackExchange.Redis.dll {neo-cli folder}/Plugins
+cp ./bin/Release/netstandard2.0/publish/System.Threading.Channels.dll {neo-cli folder}/Plugins
+cp ./bin/Release/netstandard2.0/publish/System.Diagnostics.PerformanceCounter.dll {neo-cli folder}/Plugins
+cp ./bin/Release/netstandard2.0/publish/Pipelines.Sockets.Unofficial.dll {neo-cli folder}/Plugins
+# cp ./bin/Release/netstandard2.0/publish/System.IO.Pipelines {neo-cli folder}/Plugins # Already a dependency of neo-cli
 ```
 
 ### Usage with websockets
