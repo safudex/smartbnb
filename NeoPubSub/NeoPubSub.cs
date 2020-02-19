@@ -9,7 +9,7 @@ using Snapshot = Neo.Persistence.Snapshot;
 
 namespace Neo.Plugins
 {
-    public class NeoPubSub : Plugin, ILogPlugin, IPersistencePlugin
+    public class NeoPubSub : Plugin, IPersistencePlugin
     {
         private readonly ConnectionMultiplexer connection;
 
@@ -22,11 +22,6 @@ namespace Neo.Plugins
             } else {
                 Console.WriteLine("Connected.");
             }
-        }
-
-        void ILogPlugin.Log(string source, LogLevel level, string message)
-        {
-            connection.GetSubscriber().Publish(source, message);
         }
 
         public override void Configure()
