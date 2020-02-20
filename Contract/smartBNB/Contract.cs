@@ -10,15 +10,42 @@ namespace smartBNB
     {
         private static readonly byte[] leafPrefix = { 0x00 };
         private static readonly byte[] innerPrefix = { 0x01 };
+        private static readonly int slicesLen = 128;
+        
+        private static readonly byte STG_GENERAL = 0x01;
+        private static readonly byte STG_POINTMUL = 0x02;
+        
+        private static readonly byte[] byteP =  {0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
+        
+    	private static readonly	byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
+
+        [Serializable]
+        struct GeneralChallengeVariables
+        {
+            public byte[][] signature;
+            public BigInteger[] xs;
+            public BigInteger[] ys;
+            public byte[][] signableBytes;
+            public ulong[][] pre;
+            public ulong[][] preHash;
+            public BigInteger[] preHashMod;
+            public byte[] txproof;
+            public byte[] blockHeader;
+        }
+
+        [Serializable]
+        struct PointMulStep
+        {
+            public BigInteger[] Q;
+            public BigInteger s;
+            public BigInteger[] P;
+        }
 
         public static bool Main(string operation, params object[] args)
         {
-			byte[] byteP =  {0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
-			BigInteger p = byteP.AsBigInteger();
+            Storage.Put("exec", operation);
 			
-			byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
-			BigInteger d = byteD.AsBigInteger();
-			
+			//[pubk0, pubk1, pubk2, ..., pubk10]
 			byte[][] pubks = new byte[][] {
 			    new byte[]{0xd3, 0x76, 0x9d, 0x8a, 0x1f, 0x78, 0xb4, 0xc1, 0x7a, 0x96, 0x5f, 0x7a, 0x30, 0xd4, 0x18, 0x1f, 0xab, 0xbd, 0x1f, 0x96, 0x9f, 0x46, 0xd3, 0xc8, 0xe8, 0x3b, 0x5a, 0xd4, 0x84, 0x54, 0x21, 0xd8},
                 new byte[]{0x2b, 0xa4, 0xe8, 0x15, 0x42, 0xf4, 0x37, 0xb7, 0xae, 0x1f, 0x8a, 0x35, 0xdd, 0xb2, 0x33, 0xc7, 0x89, 0xa8, 0xdc, 0x22, 0x73, 0x43, 0x77, 0xd9, 0xb6, 0xd6, 0x3a, 0xf1, 0xca, 0x40, 0x3b, 0x61},
@@ -32,88 +59,220 @@ namespace smartBNB
                 new byte[]{0x0c, 0x91, 0x0e, 0x2f, 0xe6, 0x50, 0xe4, 0xe0, 0x14, 0x06, 0xb3, 0x31, 0x0b, 0x48, 0x9f, 0xb6, 0x0a, 0x84, 0xbc, 0x3f, 0xf5, 0xc5, 0xbe, 0xe3, 0xa5, 0x6d, 0x58, 0x98, 0xb6, 0xa8, 0xaf, 0x32},
                 new byte[]{0x71, 0xf2, 0xd7, 0xb8, 0xec, 0x1c, 0x8b, 0x99, 0xa6, 0x53, 0x42, 0x9b, 0x01, 0x18, 0xcd, 0x20, 0x1f, 0x79, 0x4f, 0x40, 0x9d, 0x0f, 0xea, 0x4d, 0x65, 0xb1, 0xb6, 0x62, 0xf2, 0xb0, 0x00, 0x63}
 			};
+			
+			//[X0, Y0, X0Y0%P, X1, Y1, X1Y1%P, ...]
+			byte[][] pubksDecompressed = new byte[][] {
+                new byte[] {0x6b, 0xef, 0x5e, 0xac, 0x02, 0xc3, 0x50, 0x83, 0x30, 0x3a, 0xf1, 0x52, 0xbb, 0xa1, 0xda, 0x6d, 0x41, 0xe4, 0xda, 0xfe, 0xa9, 0x2d, 0x9e, 0x3a, 0x78, 0x8f, 0x6a, 0x57, 0x12, 0xc7, 0x5e, 0x0d},
+                new byte[] {0xd3, 0x76, 0x9d, 0x8a, 0x1f, 0x78, 0xb4, 0xc1, 0x7a, 0x96, 0x5f, 0x7a, 0x30, 0xd4, 0x18, 0x1f, 0xab, 0xbd, 0x1f, 0x96, 0x9f, 0x46, 0xd3, 0xc8, 0xe8, 0x3b, 0x5a, 0xd4, 0x84, 0x54, 0x21, 0x58},
+                new byte[] {0xca, 0xfd, 0xf9, 0x28, 0x00, 0x57, 0x8b, 0x44, 0x38, 0x4d, 0x96, 0x5a, 0x9e, 0x50, 0x39, 0x59, 0xb5, 0xf9, 0x62, 0x65, 0x7b, 0xfe, 0x5c, 0x76, 0x76, 0x7b, 0x38, 0xfa, 0x6a, 0x8d, 0x60, 0x68},
+                new byte[] {0xf0, 0x26, 0xf7, 0x0e, 0xcb, 0xad, 0xed, 0xe0, 0x25, 0xda, 0x0b, 0x8a, 0x32, 0x22, 0xa7, 0x4b, 0x97, 0x38, 0xa2, 0xc0, 0xd0, 0x0e, 0xd2, 0xac, 0xd3, 0x25, 0xb2, 0x2e, 0x88, 0xe8, 0xcf, 0x1a},
+                new byte[] {0x2b, 0xa4, 0xe8, 0x15, 0x42, 0xf4, 0x37, 0xb7, 0xae, 0x1f, 0x8a, 0x35, 0xdd, 0xb2, 0x33, 0xc7, 0x89, 0xa8, 0xdc, 0x22, 0x73, 0x43, 0x77, 0xd9, 0xb6, 0xd6, 0x3a, 0xf1, 0xca, 0x40, 0x3b, 0x61},
+                new byte[] {0xa2, 0xa2, 0x21, 0xbb, 0xb0, 0x85, 0xd8, 0xf5, 0x22, 0x7d, 0x62, 0xff, 0x38, 0x2f, 0xbd, 0x6d, 0xc0, 0xa3, 0xec, 0xcc, 0xaa, 0xfa, 0x5c, 0x95, 0xee, 0xc3, 0xcb, 0x3c, 0xfd, 0xea, 0x2d, 0x00},
+                new byte[] {0x52, 0x91, 0xa8, 0x7d, 0x92, 0x12, 0x01, 0x90, 0xbb, 0xd3, 0xd2, 0x61, 0x92, 0x18, 0x1f, 0xe7, 0x31, 0x6b, 0x1a, 0x05, 0xaa, 0x96, 0xb1, 0x57, 0xe3, 0xfa, 0x4a, 0x32, 0x59, 0x1c, 0xcc, 0x26},
+                new byte[] {0xdf, 0x8d, 0xa8, 0xc5, 0xab, 0xfd, 0xb3, 0x85, 0x95, 0x39, 0x13, 0x08, 0xbb, 0x71, 0xe5, 0xa1, 0xe0, 0xaa, 0xbd, 0xc1, 0xd0, 0xcf, 0x38, 0x31, 0x5d, 0x50, 0xd6, 0xbe, 0x93, 0x9b, 0x26, 0x06},
+                new byte[] {0xef, 0x51, 0xe6, 0xb9, 0x5c, 0x30, 0x33, 0x2d, 0x9d, 0x11, 0x32, 0x6f, 0x27, 0x70, 0xd9, 0x98, 0x0b, 0x89, 0x0d, 0xf3, 0xc4, 0x30, 0x1d, 0x96, 0x85, 0xe9, 0xa9, 0xba, 0x98, 0xec, 0x3a, 0x3b},
+                new byte[] {0xc1, 0xd0, 0xea, 0xc9, 0x42, 0x3e, 0xe0, 0xc0, 0x63, 0x7f, 0x11, 0x19, 0xfd, 0xbb, 0xd6, 0x41, 0x83, 0xbd, 0x64, 0x2d, 0xb8, 0x16, 0x0b, 0xcd, 0xb1, 0x40, 0x2c, 0x62, 0xc9, 0x1f, 0x1b, 0x21},
+                new byte[] {0xb6, 0x61, 0x9e, 0xdc, 0xa4, 0x14, 0x34, 0x84, 0x80, 0x02, 0x81, 0xd6, 0x98, 0xb7, 0x0c, 0x93, 0x5e, 0x91, 0x52, 0xad, 0x57, 0xb3, 0x1d, 0x85, 0xc0, 0x5f, 0x2f, 0x79, 0xf6, 0x4b, 0x39, 0x73},
+                new byte[] {0x70, 0xa5, 0xe2, 0xc7, 0x04, 0x71, 0x5e, 0x72, 0x65, 0x6f, 0x7b, 0xce, 0xdb, 0xa8, 0x18, 0x29, 0xcd, 0x67, 0x3d, 0x77, 0x28, 0x0f, 0xc1, 0xf0, 0x5b, 0xfc, 0x77, 0xe3, 0xcd, 0xbf, 0xcd, 0x0d},
+                new byte[] {0x46, 0xee, 0x2f, 0x7a, 0x32, 0xf6, 0x22, 0x21, 0xd6, 0xce, 0x2a, 0xcb, 0xbe, 0x3d, 0xd5, 0x86, 0x59, 0x51, 0x3b, 0x55, 0xad, 0xed, 0xf1, 0x49, 0xfd, 0x6f, 0x7e, 0x3c, 0x18, 0x9f, 0x05, 0x68},
+                new byte[] {0x94, 0x46, 0xd1, 0x4a, 0xd8, 0x6c, 0x8d, 0x2d, 0x74, 0x78, 0x0b, 0x08, 0x47, 0x11, 0x00, 0x01, 0xa1, 0xc2, 0xe2, 0x52, 0xee, 0xdf, 0xea, 0x47, 0x53, 0xeb, 0xbb, 0xfc, 0xe3, 0xa2, 0x2f, 0x52},
+                new byte[] {0x00, 0xfb, 0x75, 0x06, 0x32, 0x14, 0xaa, 0xb4, 0x36, 0x2f, 0xce, 0xb8, 0x92, 0x8f, 0x6c, 0x63, 0x0d, 0x96, 0x04, 0x05, 0x88, 0xc4, 0x0f, 0x71, 0xea, 0x33, 0x81, 0xb9, 0xe2, 0x5f, 0xec, 0x6c},
+                new byte[] {0x41, 0xee, 0x23, 0x13, 0xc4, 0xdc, 0x50, 0xfb, 0x95, 0x53, 0x65, 0xff, 0x9d, 0xd9, 0xbb, 0xb9, 0x6e, 0xa0, 0x9e, 0x5e, 0xf4, 0xd6, 0x05, 0xb5, 0x8a, 0xa2, 0x29, 0x38, 0x69, 0xbf, 0x22, 0x3e},
+                new byte[] {0x03, 0x53, 0xc6, 0x39, 0xf8, 0x0c, 0xc8, 0x01, 0x59, 0x44, 0x43, 0x6d, 0xab, 0x10, 0x32, 0x24, 0x5d, 0x44, 0xf9, 0x12, 0xed, 0xc3, 0x1e, 0xf6, 0x68, 0xff, 0x9f, 0x4a, 0x45, 0xcd, 0x05, 0x19},
+                new byte[] {0xaf, 0xac, 0x0f, 0x35, 0xb9, 0xd3, 0xe8, 0x92, 0x61, 0x1c, 0xcd, 0xef, 0xe3, 0x75, 0x41, 0xf5, 0xd4, 0x35, 0x66, 0x5f, 0x05, 0x2d, 0x97, 0x99, 0x4f, 0xc6, 0xfa, 0x5f, 0x3d, 0x89, 0x4f, 0x20},
+                new byte[] {0x00, 0x39, 0x38, 0x85, 0xb6, 0x7a, 0x80, 0x4d, 0x83, 0x89, 0xec, 0x51, 0x65, 0x24, 0x9e, 0x59, 0x5d, 0xa5, 0x1b, 0x38, 0x9c, 0x26, 0xba, 0x9f, 0x69, 0x15, 0x1b, 0x4f, 0xc3, 0x78, 0x1e, 0x56},
+                new byte[] {0xe8, 0x1d, 0x37, 0x97, 0xe0, 0x54, 0x4c, 0x3a, 0x71, 0x8e, 0x1f, 0x05, 0xf0, 0xfb, 0x78, 0x22, 0x12, 0xe2, 0x48, 0xe7, 0x84, 0xc1, 0xa8, 0x51, 0xbe, 0x87, 0xe7, 0x7a, 0xe0, 0xdb, 0x23, 0x0e},
+                new byte[] {0xc6, 0x96, 0x78, 0x8e, 0x22, 0xcd, 0xa7, 0x13, 0x22, 0xbf, 0x7e, 0xaf, 0xe1, 0x61, 0x7a, 0x28, 0x6b, 0x3f, 0x16, 0xa5, 0xdc, 0x86, 0x69, 0x47, 0x67, 0x65, 0x51, 0x21, 0x38, 0xf0, 0x74, 0x38},
+                new byte[] {0x68, 0xc7, 0xd9, 0xd4, 0x0c, 0xd2, 0x6d, 0xe1, 0x91, 0x17, 0x3c, 0xd0, 0xfd, 0xe4, 0x3a, 0xce, 0xf8, 0x18, 0x01, 0xe8, 0xbf, 0x90, 0x1b, 0xa0, 0x52, 0xc1, 0x92, 0x15, 0xfb, 0x7b, 0x3d, 0x08},
+                new byte[] {0x5e, 0x3f, 0xcd, 0xa3, 0x0b, 0xd1, 0x9d, 0x45, 0xc4, 0xb7, 0x36, 0x88, 0xda, 0x35, 0xe7, 0xda, 0x1f, 0xce, 0x7c, 0x68, 0x59, 0xb2, 0xc1, 0xf2, 0x0e, 0xd5, 0x20, 0x2d, 0x24, 0x14, 0x4e, 0x3e},
+                new byte[] {0x96, 0x14, 0x7e, 0x04, 0x6d, 0x93, 0x96, 0x3f, 0xab, 0xd2, 0xa3, 0xc9, 0x8d, 0x54, 0xc5, 0xdd, 0xcf, 0xf9, 0x23, 0x33, 0x9c, 0x85, 0xca, 0x03, 0xe7, 0xe0, 0xab, 0x4b, 0x4d, 0x2b, 0x94, 0x7e},
+                new byte[] {0x29, 0x70, 0xb0, 0xe3, 0xfd, 0xe7, 0x0a, 0x73, 0xfd, 0xd7, 0x67, 0xa8, 0x49, 0x29, 0x4e, 0x78, 0xc4, 0x08, 0xf3, 0x01, 0x63, 0xce, 0xaf, 0x1a, 0x35, 0x28, 0x30, 0xf6, 0xf7, 0xcb, 0xe9, 0x23},
+                new byte[] {0xb0, 0x6a, 0x59, 0xa2, 0xd7, 0x5b, 0xf5, 0xd0, 0x14, 0xfc, 0xe7, 0xc9, 0x99, 0xb5, 0xe7, 0x1e, 0x7a, 0x96, 0x08, 0x70, 0xf7, 0x25, 0x84, 0x7d, 0x4b, 0xa3, 0x23, 0x5b, 0xae, 0xaa, 0x08, 0x6f},
+                new byte[] {0x64, 0xbb, 0x01, 0xba, 0x36, 0x7e, 0x64, 0xe3, 0x3e, 0xe3, 0x37, 0x1d, 0xcf, 0x92, 0xe2, 0x80, 0xc1, 0x3b, 0x9b, 0x56, 0xe6, 0xbe, 0x88, 0x19, 0x19, 0xed, 0x42, 0x11, 0x53, 0x85, 0xdd, 0x44},
+                new byte[] {0x4e, 0x13, 0xe1, 0x7c, 0x14, 0xc2, 0x77, 0x0b, 0xf1, 0xa2, 0x4c, 0x07, 0x0e, 0x25, 0x30, 0x3e, 0xa4, 0xd4, 0x17, 0xb7, 0x76, 0x99, 0xe0, 0x0b, 0xf3, 0x27, 0xaf, 0x28, 0xf1, 0xea, 0x90, 0x63},
+                new byte[] {0x0c, 0x91, 0x0e, 0x2f, 0xe6, 0x50, 0xe4, 0xe0, 0x14, 0x06, 0xb3, 0x31, 0x0b, 0x48, 0x9f, 0xb6, 0x0a, 0x84, 0xbc, 0x3f, 0xf5, 0xc5, 0xbe, 0xe3, 0xa5, 0x6d, 0x58, 0x98, 0xb6, 0xa8, 0xaf, 0x32},
+                new byte[] {0x57, 0x58, 0xeb, 0xe4, 0x96, 0x8d, 0x04, 0xce, 0x9d, 0x13, 0xf1, 0xe3, 0x86, 0x09, 0xa2, 0x35, 0xe0, 0x40, 0xbd, 0xcb, 0xb1, 0x47, 0x1a, 0x35, 0x87, 0x72, 0xbc, 0x45, 0xdc, 0x7c, 0x7d, 0x30},
+                new byte[] {0x24, 0xac, 0xfa, 0xa3, 0x92, 0x99, 0xac, 0x93, 0x3b, 0x77, 0x40, 0x12, 0x77, 0xb0, 0x97, 0x34, 0x15, 0xf2, 0xf5, 0xe9, 0x8a, 0xda, 0xa1, 0x3f, 0x8a, 0x9f, 0x6e, 0xf8, 0xe4, 0x7e, 0xa2, 0x0a},
+                new byte[] {0x71, 0xf2, 0xd7, 0xb8, 0xec, 0x1c, 0x8b, 0x99, 0xa6, 0x53, 0x42, 0x9b, 0x01, 0x18, 0xcd, 0x20, 0x1f, 0x79, 0x4f, 0x40, 0x9d, 0x0f, 0xea, 0x4d, 0x65, 0xb1, 0xb6, 0x62, 0xf2, 0xb0, 0x00, 0x63},
+                new byte[] {0x50, 0x4c, 0xd0, 0x7c, 0x07, 0xf7, 0x27, 0xd4, 0x71, 0xc4, 0x2b, 0x42, 0x13, 0x0c, 0xcf, 0x4c, 0x2f, 0x86, 0xb2, 0xe6, 0xe9, 0x44, 0x12, 0xfe, 0x89, 0x84, 0xf8, 0x47, 0x32, 0x01, 0xef, 0x72}
+			};
+
 
             if (Runtime.Trigger == TriggerType.Application)
             {
-                switch (operation)
+                if(operation=="savestate")
                 {
-                    case "savestate":
-                        /* ARGS
-                        0 byte[] collatid
-                        1 byte[] txid
-                        2 byte[][] signatures
-                        3 bigint[] xs
-                        4 bigint[] ys
-                        5 byte[][] signablebytes
-                        6 byte[] blockhash
-                        7 ulong[][] pres
-                        8 ulong[][] preshash
-                        9 bigint[] preshashmod
-                        10 bigint[][] sB
-                        11 bigint[][] hb*/
-                        return SaveChallengeState(args);
-                    case "challenge 0":
-                        /* ARGS
-                        0 byte[] collatid
-                        1 byte[] txid
-                        2 int signature index*/
-                        return ChallengeInitialChecks((byte[])args[0], (byte[])args[1], (int)args[2], p);
-                    case "challenge 1":
-                        /* ARGS
-                        0 byte[] collatid
-                        1 byte[] txid
-                        2 int signature index
-                        3 byte[] signPubK*/
-                        return ChallengeCheckBytes((byte[])args[0], (byte[])args[1], (int)args[2], pubks[(int)args[2]]);
-                    case "challenge 2":
-                        /* ARGS
-                        0 byte[] collatid
-                        1 byte[] txid
-                        2 int signature index*/
-                        return ChallengeSha512((byte[])args[0], (byte[])args[1], (int)args[2]);
-                    case "challenge 3":
-                        /* ARGS
-                        0 byte[] collatid
-                        1 byte[] txid
-                        2 int signature index*/
-                        return ChallengeSha512ModQ((byte[])args[0], (byte[])args[1], (int)args[2]);
-                    case "challenge 4":
-                        /* ARGS
-                        0 byte[] collatid
-                        1 byte[] txid
-                        2 int signature index*/
-                        return ChallengePointEqual((byte[])args[0], (byte[])args[1], (int)args[2], p, d);
-                    default:
-                        return false;
+                	/* ARGS
+                	for general state:
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 byte[][] signatures
+                    3 bigint[] xs (decompressed signature x)
+                    4 bigint[] ys (decompressed signature y)
+                    5 byte[][] signablebytes
+                    6 ulong[][] pres
+                    7 ulong[][] preshash
+                    8 bigint[] preshashmod
+                    9 byte[] txproof
+                    10 byte[] blockHeader
+                    
+                    for point mul
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 string type (simple/multi -> BigInteger[]/BigInteger[][])
+                    3 string id (pointmulid+slice num)
+                    4 BigInteger[]/BigInteger[][] data
+                    */
+                    bool r = SaveChallengeState(args);
+                    Storage.Put("r", r?"strue":"sfalse");
+                    return r;
                 }
+                else if(operation=="challenge 0")
+                {
+                    /* ARGS
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 int signature index*/
+                    bool r = ChallengeInitialChecks((byte[])args[0], (byte[])args[1], (int)args[2], byteP.AsBigInteger());
+                    Storage.Put("r", r?"0true":"0false");
+                    return r;
+                }
+                else if(operation=="challenge 1")
+                {
+                    /* ARGS
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 int signature index*/
+                    bool r = ChallengeCheckBytesV2((byte[])args[0], (byte[])args[1], (int)args[2], pubks[(int)args[2]]);
+                    Storage.Put("r", r?"1true":"1false");
+                    return r;
+                }
+                else if(operation=="challenge 2")
+                {
+                    /* ARGS
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 int signature index*/
+                    bool r = ChallengeSha512((byte[])args[0], (byte[])args[1], (int)args[2]);
+                    Storage.Put("r", r?"2true":"2false");
+                    return r;
+                }
+                else if(operation=="challenge 3")
+                {
+                    /* ARGS
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 int signature index*/
+                    bool r = ChallengeSha512ModQ((byte[])args[0], (byte[])args[1], (int)args[2]);
+                    Storage.Put("r", r?"3true":"3false");
+                    return r;
+                }
+                else if(operation=="challenge 4")
+                {
+                    /* ARGS
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 int signature index*/
+                    bool r = ChallengePointEqual((byte[])args[0], (byte[])args[1], (int)args[2], byteP.AsBigInteger(), byteD.AsBigInteger());
+                    Storage.Put("r", r?"4true":"4false");
+                    return r;
+                }
+                else if(operation=="challenge 5"){
+                    /* ARGS
+                    0 byte[] collatid
+                    1 byte[] txid
+                    2 int signature index
+                    3 int step num
+                    4 string mulid*/
+                    bool r = ChallengeEdDSA_PointMul_Setp((byte[])args[0], (byte[])args[1], (int)args[2], (int)args[3], (string)args[4], pubksDecompressed, byteP.AsBigInteger(), byteD.AsBigInteger());
+                    Storage.Put("r", r?"5true":"5false");
+                    return r;
+                }
+                else if(operation=="challenge 6"){
+                    /* ARGS
+                    0 byte[] collatid
+                    1 byte[] txid*/
+                    bool r = ChallengeTxProof((byte[])args[0], (byte[])args[1]);
+                    Storage.Put("r", r?"6true":"6false");
+                    return r;
+                }
+                else if (operation=="proofIsSaved")
+                    return proofIsSaved((byte[])args[0], (byte[])args[1]);
+                else if (operation=="removeStorage")//only for debug!!
+                    return removeStorage((byte[])args[0], (byte[])args[1]);
+                else
+                    return false;
             }
             return true;
         }
-    	
+        
+        private static bool proofIsSaved(byte[] collatId, byte[] txHash)
+        {
+            byte[] s = collatId.Concat(txHash);
+
+            string[] ss = {"", "Ps_ha0", "Ps_ha1", "ss_ha0", "ss_ha1", "Qs_ha0", "Qs_ha1", "Ps_sb0", "Ps_sb1", "ss_sb0", "Qs_sb0", "ss_sb1", "Qs_sb1"};
+            byte[][] ids = new byte[ss.Length][];
+            for (int i = 0; i < ids.Length; i++)
+            {
+                ids[i] = s.Concat(ss[i].AsByteArray());
+            }
+            
+            for (int i = 0; i < ids.Length; i++)
+            {
+                if (Storage.Get(ids[i]).Length==0)
+                {
+                    Storage.Put("isSaved", ids[i]);
+                    return false;
+                }
+            }
+            Storage.Put("isSaved", "true");
+            return true;
+        }
+        
+        private static bool removeStorage(byte[] collatId, byte[] txHash)
+        {
+            byte[] s = collatId.Concat(txHash);
+
+            string[] ss = {"", "Ps_ha0", "Ps_ha1", "ss_ha0", "ss_ha1", "Qs_ha0", "Qs_ha1", "Ps_sb0", "Ps_sb1", "ss_sb0", "Qs_sb0", "ss_sb1", "Qs_sb1"};
+            byte[][] ids = new byte[ss.Length][];
+            for (int i = 0; i < ids.Length; i++)
+            {
+                ids[i] = s.Concat(ss[i].AsByteArray());
+            }
+            
+            for (int i = 0; i < ids.Length; i++)
+            {
+                Storage.Put(ids[i], 0);
+            }
+            Storage.Put("removed", "true");
+            return true;
+        }
+
     	private static bool SaveChallengeState(params object[] args)
     	{
-    		if (Runtime.CheckWitness((byte[])args[0])){
-    			return saveStateToStorage(0x0, (byte[])args[0], (byte[])args[1], (byte[][])args[2],(BigInteger[])args[3],(BigInteger[])args[4],(byte[][])args[5],(byte[])args[6],(ulong[][])args[7],(ulong[][])args[8],(BigInteger[])args[9],(BigInteger[][])args[10],(BigInteger[][])args[11]);
+    		if (Runtime.CheckWitness((byte[])args[0]))//args: collatid
+    		{
+    		    if (args.Length==11)
+                    return saveStateToStorage(STG_GENERAL, args);
+    		    else if (args.Length == 5)
+    		        return saveStateToStorage(STG_POINTMUL, args);
     		}
     		return false;
     	}
 
-        private static bool Validate(byte[] rawProof, byte[] rawHeader, byte[] rawSignatures)
+        private static bool Validate(byte[] rawProof, byte[] rawHeader)
         {
-            // Verify relationship with the block. Compares if hDataHash and txProofRootHash are equal
-            // TODO: Remove this comparison and compare hDataHash with computed hash from proof on TxValidation
-            if (!AreEqual(rawHeader.Range(158, 32), rawProof.Range(32,32)))
-                throw new Exception("Relationship with the signed block cannot be verified");            
-
-            // Verify signatures
-            VerifyBlock(rawHeader, rawSignatures);
-
-            // Verify merkle tree
-            VerifyTx(rawProof);
-
-            return true;
+            // Verify relationship with the block. Compares if hDataHash and txProofRootHash are equal and merkle path is ok
+            int accLen = 0;
+            //getting hDataHash
+            for (int i = 0; i < 8; i++)
+            {
+                accLen += rawHeader[accLen]+1;
+            }
+            return VerifyTx(rawProof, rawHeader.Range(accLen+2, rawHeader[accLen]-1));
         }
 
+        //deprecated
         private static bool VerifyBlock(byte[] rawHeader, byte[] rawSignatures)
         {
             //Obtaining header slices
@@ -128,12 +287,12 @@ namespace smartBNB
             //Hashing header
             byte[] headerHash = SimpleHashFromByteSlices(headerSlices);
 
-            //Obtaining signatures
+            /*//Obtaining signatures
             byte[][] signatures = new byte[11][];
             for (int i = 0; i < 11; i++)
             {
                 signatures[i] = rawSignatures.Range(i*32, 32);
-            }
+            }*/
             /*
             if (!VerifySignatures(headerHash, signatures))
                 throw new Exception("Cruck");
@@ -141,33 +300,52 @@ namespace smartBNB
 
             return true;
         }
-
-        private static bool VerifyTx(byte[] proof)
+        
+        private static byte[] HashRawHeader(byte[] rawHeader)
         {
-            byte[] txProofRootHash = proof.Range(0, 32); //TODO: remove this + reindex ranges on unpacking
-            byte[] txProofLeafHash = proof.Range(32, 32);
-            int txProofIndex = proof.Range(64, 1)[0];
-            int txProofTotal = proof.Range(65, 1)[0];
+            if (rawHeader.Length<2) return null;
+            
+            //Obtaining header slices
+            byte[][] headerSlices = new byte[16][];
+            int accLen = 0;
+            int i = 0;
+            
+            while (accLen < rawHeader.Length && i < headerSlices.Length)
+            {
+                headerSlices[i] = rawHeader.Range(accLen+1, rawHeader[accLen]);
+                accLen += rawHeader[accLen]+1;
+                i++;
+            }
+            
+            //Hashing header
+            return SimpleHashFromByteSlices(headerSlices);
 
-            int len = proof.Range(66, proof.Length - 66).Length / 32;
+        }
+
+        private static bool VerifyTx(byte[] proof, byte[] merkleRootFromHeader)
+        {
+            byte[] txProofLeafHash = proof.Range(0, 32);
+            int txProofIndex = proof.Range(32, 1)[0];
+            int txProofTotal = proof.Range(33, 1)[0];
+
+            int len = proof.Range(34, proof.Length - 34).Length / 32;
             byte[][] txProofAunts = new byte[len][];
             for (int i = 0; i < len; i++)
             {
-                txProofAunts[i] = proof.Range(66 + (i * 32), 32);
+                txProofAunts[i] = proof.Range(34 + (i * 32), 32);
             }
 
             if (txProofIndex < 0)
-                throw new Exception("Proof index cannot be negative");
+                return false;//throw new Exception("Proof index cannot be negative");
             if (txProofTotal <= 0)
-                throw new Exception("Proof total must be positive");
-
+                return false;//throw new Exception("Proof total must be positive");
 
             byte[] computedHash = ComputeHashFromAunts(txProofIndex, txProofTotal, txProofLeafHash, txProofAunts);
-            //TODO: change txProofRootHash for hDataHash get from Header
-            if (!AreEqual(computedHash, txProofRootHash))
-                throw new Exception("Invalid root hash");
+            
+            if (computedHash == null)
+                return false;
 
-            return true;
+            return AreEqual(computedHash, merkleRootFromHeader);
         }
 
         private static byte[] ComputeHashFromAunts(int index, int total, byte[] leafHash, byte[][] innerHashes)
@@ -178,31 +356,33 @@ namespace smartBNB
             switch (total)
             {
                 case 0:
-                    throw new Exception("Cannot call computeHashFromAunts() with 0 total");
+                    return null;//throw new Exception("Cannot call computeHashFromAunts() with 0 total");
                 case 1:
                     if (innerHashes.Length != 0)
                         return null;
+
                     return leafHash;
                 default:
                     if (innerHashes.Length == 0)
                         return null;
 
                     int numLeft = GetSplitPoint(total);
+                    if(numLeft<1)
+                        return null;
+                        
                     if (index < numLeft)
                     {
                         byte[] leftHash = ComputeHashFromAunts(index, numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
                         if (leftHash == null)
-                        {
                             return null;
-                        }
+                            
                         return InnerHash(leftHash, innerHashes[innerHashes.Length - 1]);
                     }
                     
                     byte[] rightHash = ComputeHashFromAunts(index - numLeft, total - numLeft, leafHash, TakeArrays(innerHashes, 0, innerHashes.Length - 2));
                     if (rightHash == null)
-                    {
                         return null;
-                    }
+                        
                     return InnerHash(innerHashes[innerHashes.Length - 1], rightHash);
             }
         }
@@ -211,7 +391,7 @@ namespace smartBNB
         private static int GetSplitPoint(int length)
         {
             if (length < 1)
-                throw new Exception("Trying to split a tree with size < 1");
+                return 0;//throw new Exception("Trying to split a tree with size < 1");
 
             return (length % 2 == 0) ? length / 2 : (length + 1) / 2;
         }
@@ -242,7 +422,6 @@ namespace smartBNB
                     return true;
                 }
             }
-
             return false;
         }
 
@@ -268,6 +447,9 @@ namespace smartBNB
                     return LeafHash(slices[0]);
                 default:
                     int k = GetSplitPoint(slices.Length);
+                    if (k<1)
+                        return null;
+                        
                     byte[] left = SimpleHashFromByteSlices(TakeArrays(slices, 0, k-1));
                     byte[] right = SimpleHashFromByteSlices(TakeArrays(slices, k, slices.Length-1));
                     return InnerHash(left, right);
@@ -281,50 +463,50 @@ namespace smartBNB
             return Sha256(message).AsBigInteger();
         }
 
-	private static BigInteger sha512modq(ulong[] num)
-	{
-		byte[] byteQ = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
-		BigInteger q = byteQ.AsBigInteger();
-
-		BigInteger res = 0;
-		BigInteger powers = 1;
-		for(int i=0; i<8; i++){
-			for(int j=0; j<8; j++){
-			    for(int k =0; k<8; k++){
-				if(((num[i]>>(56+k)) & 1) == 1){
-					res = modsum(res, powers, q);
-				}
-				powers = modsum(powers, powers, q);
-			    }
-			    num[i] = num[i] << 8;
-			}
-		}
-		return res;
-	}
+    	private static BigInteger sha512modq(ulong[] num)
+    	{
+    	    if (num.Length!=8) return -1;
+    	    
+    		byte[] byteQ = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
+    		BigInteger q = byteQ.AsBigInteger();
+    
+    		BigInteger res = 0;
+    		BigInteger powers = 1;
+    		for(int i=0; i<8; i++){
+    			for(int j=0; j<8; j++){
+    			    for(int k =0; k<8; k++){
+    				if(((num[i]>>(56+k)) & 1) == 1){
+    					res = modsum(res, powers, q);
+    				}
+    				powers = modsum(powers, powers, q);
+    			    }
+    			    num[i] = num[i] << 8;
+    			}
+    		}
+    		return res;
+    	}
         
         private static BigInteger[] EdDSA_PointAdd(BigInteger[] P, BigInteger[] Q, BigInteger p, BigInteger  d)
         {	
-            BigInteger A = mulmod(modPositive(P[1]-P[0], p) , modPositive(Q[1]-Q[0], p), p);
+            BigInteger A = mulmod(modPositive(P[1]-P[0], p), modPositive(Q[1]-Q[0], p), p);
             BigInteger B = mulmod(modsum(P[1],P[0], p), modsum(Q[1],Q[0], p), p);
             BigInteger C = mulmod(mulmod(modsum(P[3], P[3], p) , Q[3], p), d, p);
             BigInteger D = mulmod(modsum(P[2],P[2], p) , Q[2], p);
-
             BigInteger E= modPositive(B-A, p);
             BigInteger F= modPositive(D-C, p);
             BigInteger G= modsum(D,C, p);
             BigInteger H = modsum(B,A, p);
 
             BigInteger EF = mulmod(E,F,p);
-            //BigInteger EF = E*F;
             BigInteger GH = mulmod(G,H,p);
             BigInteger FG = mulmod(F,G,p);
             BigInteger EH = mulmod(E,H,p);
 
-
             return new BigInteger[4] { EF, GH, FG, EH };
         }
-	
-	private static BigInteger[] EdDSA_PointMul(BigInteger s, BigInteger[] P, BigInteger p, BigInteger d)
+
+        //deprecated
+	    private static BigInteger[] EdDSA_PointMul(BigInteger s, BigInteger[] P, BigInteger p, BigInteger d)
         {
             BigInteger[] Q = { 0, 1, 1, 0 };
             while(s>0)
@@ -336,29 +518,17 @@ namespace smartBNB
             }
             return Q;
         }
-	
-	[Serializable]
-        struct PointMulSteps
-        {
-            public BigInteger[][] Q;
-            public BigInteger[] s;
-            public BigInteger[][] P;
-        }
-        
-        [Serializable]
-        struct PointMulStep
-        {
-            public BigInteger[] Q;
-            public BigInteger s;
-            public BigInteger[] P;
-        }
         
         private static PointMulStep EdDSA_PointMul_step(PointMulStep step, BigInteger p, BigInteger d)
         {
-            if ((step.s%2)==1)
-                step.Q = EdDSA_PointAdd(step.Q, step.P, p, d);
-            step.P = EdDSA_PointAdd(step.P, step.P, p, d);
-            step.s = step.s / 2;
+            if(step.s>0)
+            {
+                if ((step.s%2)==1){
+                    step.Q = EdDSA_PointAdd(step.Q, step.P, p, d);
+                }
+                step.P = EdDSA_PointAdd(step.P, step.P, p, d);
+                step.s = step.s / 2;
+            }
             return step;
         }
         
@@ -372,8 +542,9 @@ namespace smartBNB
             return stepRecord;
         }
 
-	// To compute (a * b) % mod  
-	private static BigInteger mulmod(BigInteger a, BigInteger b, BigInteger p){
+	    // To compute (a * b) % mod  
+        private static BigInteger mulmod(BigInteger a, BigInteger b, BigInteger p)
+        {
             byte[] bytePower127 = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
             BigInteger power127 = bytePower127.AsBigInteger();
             BigInteger power128 = power127 * 2;
@@ -424,9 +595,10 @@ namespace smartBNB
         private static BigInteger modsum(BigInteger a, BigInteger b, BigInteger p)
         {
             BigInteger k = (a-p)+b;
-            if (k<0){
+            
+            if (k<0)
                 k+=p;
-            }
+                
             return k;
         }
 
@@ -438,7 +610,7 @@ namespace smartBNB
 
         private static BigInteger modPositive(BigInteger x, BigInteger m)
         {
-            return x < 0 ? x + m : x;
+            return x < 0 ? (x + m) : (x % m);
         }
 	
         public static ulong sum0(ulong v)
@@ -483,13 +655,18 @@ namespace smartBNB
          
             return res;
         }
-	
-        private static ulong[] sha512(ulong[] pre)
+
+        //implementation of FIPS PUB 180-4 https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+	    private static ulong[] sha512(ulong[] pre)
         {
             /** arg example
             ulong[] pre = { 7017280570803617792, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24 };
-            see SHA512 preprocessing https://csrc.nist.gov/csrc/media/publications/fips/180/4/final/documents/fips180-4-draft-aug2014.pdf
+            "abc"
             */
+            
+            if (pre.Length==0 || pre.Length%8!=0) return null;
+            
+            //constants
             ulong[] K = new ulong[80];
             K[0] = 4794697086780616226;
             K[1] = 8158064640168781261;
@@ -607,6 +784,7 @@ namespace smartBNB
                 f = H[5];
                 g = H[6];
                 h = H[7];
+                
                 for (int i = 0; i < 16; i++)
                 {
                     W[i] = pre[(j*16)+i] & v;
@@ -647,21 +825,22 @@ namespace smartBNB
             return H;
         }
 	
-	/**
-	usage example
-	int ini = 9;
-	int fin = 88;
-
-	//pre = 0aaaaaaaabc00...0024
-	ulong[] pre = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24 };
-	pre[0]=27410143614427489;
-	pre[1]=7017280570803617792;
-
-	byte[] bytes = "aaaaaaaabc".AsByteArray();
-
-	bool res = checkBytes(pre, bytes, ini, fin);
-	*/
-	public static bool checkBytes(ulong[] pre, byte[] bytes, int ini, int fin)
+    	/**
+    	usage example
+    	int ini = 9;
+    	int fin = 88;
+    
+    	//pre = 0aaaaaaaabc00...0024
+    	ulong[] pre = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24 };
+    	pre[0]=27410143614427489;
+    	pre[1]=7017280570803617792;
+    
+    	byte[] bytes = "aaaaaaaabc".AsByteArray();
+    
+    	bool res = checkBytes(pre, bytes, ini, fin);
+    	*/
+    	//deprecated
+    	public static bool checkBytes(ulong[] pre, byte[] bytes, int ini, int fin)
         {
 
             if(bytes.Length!=fin/8)
@@ -694,9 +873,6 @@ namespace smartBNB
                     itmsg = itmsg << 1;
                 }
                 else{
-                    Storage.Put("len", bytes.Length);
-                    Storage.Put("fin", fin);
-                    Storage.Put("ini", ini);
                     return false;
                 }
       
@@ -704,7 +880,7 @@ namespace smartBNB
             return true;
         }
 	
-	private static bool point_equal(BigInteger[] P, BigInteger[] Q, BigInteger p)
+	    private static bool point_equal(BigInteger[] P, BigInteger[] Q, BigInteger p)
         {
             if (modrest(mulmod(P[0], Q[2], p), mulmod(Q[0], P[2], p), p) != 0)
                 return false;
@@ -712,8 +888,9 @@ namespace smartBNB
                 return false;
             return true;
         }
-	
-	private static bool verify_signature(
+
+        //deprecated
+	    private static bool verify_signature(
             BigInteger A0_xPubK, BigInteger A1_yPubK, byte[] pubK,
             BigInteger R0_xSigHigh, BigInteger R1_ySigHigh, byte[] signature,
             ulong[] pre, byte[] signableBytes, byte[] blockHash)
@@ -725,12 +902,12 @@ namespace smartBNB
 			BigInteger d = byteD.AsBigInteger();
             
             if (signature.Length!=64)
-                throw new Exception("Bad signature length");
+                return false;//throw new Exception("Bad signature length");
             
             byte[] Rs_signatureHigh = signature.Range(0, 32);
              
             if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
-                throw new Exception("Relationship between compressed and decompressed public point not found");
+                return false;//throw new Exception("Relationship between compressed and decompressed public point not found");
                 
             byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
             BigInteger q = q_bytes.AsBigInteger();
@@ -743,13 +920,13 @@ namespace smartBNB
             for (int i=0; i<32;i++)
             {
                 if(blockHash[i]!=signableBytes[16+i])
-                    throw new Exception("Hash not contained in signBytes");
+                    return false;//throw new Exception("Hash not contained in signBytes");
             }
             
             byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
             
             if (!checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1])){
-                throw new Exception("Wrong padded message");
+                return false;//throw new Exception("Wrong padded message");
             }
 
             ulong[] hash = sha512(pre);
@@ -770,13 +947,14 @@ namespace smartBNB
             BigInteger[] hA = EdDSA_PointMul(h, A, p, d);
             
             BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
-			
+
             bool isSigOK = point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
             
             return isSigOK;
         }
 	
-	private static bool checkCompressed(BigInteger x, BigInteger y, byte[] compressed, BigInteger p){
+	    private static bool checkCompressed(BigInteger x, BigInteger y, byte[] compressed, BigInteger p)
+	    {
             if(x<0 || x>=p){
                 return false;
             }
@@ -828,81 +1006,103 @@ namespace smartBNB
             return Helper.Serialize(obj);
         }
         
-        [Serializable]
-        struct GeneralChallengeVariables
+	    private static Object getStateFromStorage(byte state, byte[] collatId, byte[] txHash, params object[] args)
         {
-            public byte[][] signature;
-            public BigInteger[] xs;
-            public BigInteger[] ys;
-            public byte[][] signableBytes;
-            public byte[] blockHash;
-            public ulong[][] pre;
-            public ulong[][] preHash;
-            public BigInteger[] preHashMod;
-            public BigInteger[][] sB;
-            public BigInteger[][] hA;
+            byte[] stg_key = collatId.Concat(txHash);
+
+            if (state == STG_POINTMUL)
+                stg_key = stg_key.Concat(((string)args[0]).AsByteArray());//collatid+txhash+pointmulid
+
+            byte[] stg = Storage.Get(stg_key);
+            if (stg.Length == 0) return null;
+            return BytesToObject(stg);
         }
         
-	private static Object getStateFromStorage(byte state, byte[] collatId, byte[] txHash, params object[] args)
+        private static bool saveStateToStorage(byte state, params object[] args)
         {
-            switch (state)
+            byte[] callerAddr = (byte[])args[0];
+            byte[] txHash = (byte[])args[1];
+            if(state == STG_GENERAL)
             {
-                case 0x0:
-                    return BytesToObject(Storage.Get("0x0_"+collatId.AsString()+"_"+txHash.AsString()));
-                case 0x1:
-                    return BytesToObject(Storage.Get("0x1_"+collatId.AsString()+"_"+txHash.AsString()+"_"+(int)args[0]));
-                default:
-                    return new Object();
+                GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+                challengeVars.signature = (byte[][])args[2];
+                if (challengeVars.signature.Length!=8) return false;
+                
+                challengeVars.xs = (BigInteger[])args[3];
+                if (challengeVars.xs.Length!=8) return false;
+                
+                challengeVars.ys = (BigInteger[])args[4];
+                if (challengeVars.ys.Length!=8) return false;
+                
+                challengeVars.signableBytes = (byte[][])args[5];
+                if (challengeVars.signableBytes.Length!=8) return false;
+                
+                challengeVars.pre = (ulong[][])args[6];
+                if (challengeVars.pre.Length!=8) return false;
+                
+                challengeVars.preHash = (ulong[][])args[7];
+                if (challengeVars.preHash.Length!=8) return false;
+                
+                challengeVars.preHashMod = (BigInteger[])args[8];
+                if (challengeVars.preHashMod.Length!=8) return false;
+                
+                challengeVars.txproof = (byte[])args[9];
+                if (challengeVars.txproof.Length==0) return false;
+                
+                challengeVars.blockHeader = (byte[])args[10];
+                if (challengeVars.blockHeader.Length==0) return false;
+                
+                byte[] stg_key = callerAddr.Concat(txHash);
+                Storage.Put(stg_key, ObjectToBytes(challengeVars));
+                return true;
             }
-        }
-        
-        private static bool saveStateToStorage(byte state, byte[] callerAddr, byte[] txHash, params object[] args)
-        {
-            switch (state)
+            else if(state == STG_POINTMUL)
             {
-                case 0x0:
-                    GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-                    challengeVars.signature = (byte[][])args[0];//signature
-                    challengeVars.xs = (BigInteger[])args[1];//xs
-                    challengeVars.ys = (BigInteger[])args[2];//ys
-                    challengeVars.signableBytes = (byte[][])args[3];//signableBytes
-                    challengeVars.blockHash = (byte[])args[4];//blockHash
-                    challengeVars.pre = (ulong[][])args[5];//pre
-                    challengeVars.preHash = (ulong[][])args[6];//preHash
-                    challengeVars.preHashMod = (BigInteger[])args[7];//preHashMod
-                    challengeVars.sB = (BigInteger[][])args[8];//sB
-                    challengeVars.hA = (BigInteger[][])args[9];//hA
-                    Storage.Put("0x0_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(challengeVars));
-                    return true;
-                case 0x1:
-                    PointMulSteps pointMulSteps = new PointMulSteps();
-                    pointMulSteps.s = (BigInteger[])args[0];
-                    pointMulSteps.P = (BigInteger[][])args[1];
-                    pointMulSteps.Q = (BigInteger[][])args[2];
-                    Storage.Put("0x1_"+callerAddr.AsString()+"_"+txHash.AsString(), ObjectToBytes(pointMulSteps));
-                    return true;
-                default:
-                    return false;
+                byte[] stg_key = callerAddr.Concat(txHash).Concat(((string)args[3]).AsByteArray());//callerAddr+TxHash+pointmulId
+                
+                if((string)args[2]=="simple")
+                {
+                    BigInteger[] data = (BigInteger[])args[4];
+                    if (data.Length != slicesLen) return false;
+                    
+                    Storage.Put(stg_key, ObjectToBytes(data));
+                }
+                else
+                {
+                    BigInteger[][] data = (BigInteger[][])args[4];
+                    if (data.Length != slicesLen) return false;
+                    
+                    for (int i=0; i< data.Length; i++)
+                        if (data[i].Length!=4) return false;
+                    
+                    Storage.Put(stg_key, ObjectToBytes(data));
+                }
+
+                return true;
             }
+            return false;
         }
    
         private static bool ChallengeInitialChecks(byte[] collatId, byte[] txHash, int sigIndex, BigInteger p)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            if (o==null) return false;
+            challengeVars = (GeneralChallengeVariables)o;
+            
             byte[] signature = challengeVars.signature[sigIndex];
             BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
             BigInteger R1_ySigHigh = challengeVars.ys[sigIndex];
             byte[] signableBytes = challengeVars.signableBytes[sigIndex];
-            byte[] blockHash = challengeVars.blockHash;
-            
+            byte[] rawHeader = challengeVars.blockHeader;
+
             if (signature.Length!=64)
-                throw new Exception("Bad signature length");
+                return false;//throw new Exception("Bad signature length");
             
             byte[] Rs_signatureHigh = signature.Range(0, 32);
             
             if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
-                throw new Exception("Relationship between compressed and decompressed public point not found");
+                return false;//throw new Exception("Relationship between compressed and decompressed public point not found");
                
             byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
             BigInteger q = q_bytes.AsBigInteger();
@@ -911,30 +1111,44 @@ namespace smartBNB
             BigInteger s = s_signatureLow.AsBigInteger();
             if (s>=q || s<0)
                 return false;
+
+            byte[] blockHash = HashRawHeader(rawHeader);
             
-            for (int i=0; i<32;i++)
-            {
-                if(blockHash[i]!=signableBytes[16+i])
-                    throw new Exception("Hash not contained in signableBytes");
-            }
-            
-            return true;
+            return AreEqual(blockHash, signableBytes.Range(16,32));
+            //if return false; -> throw new Exception("Hash not contained in signableBytes");
         }
         
-	private static bool ChallengeCheckBytes(byte[] collatId, byte[] txHash, int sigIndex, byte[] pubK)
+        private static bool ChallengeCheckBytesV2(byte[] collatId, byte[] txHash, int sigIndex, byte[] pubK)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            if (o==null) return false;
+            challengeVars = (GeneralChallengeVariables)o;
+            
+            ulong[] pre = challengeVars.pre[sigIndex];
+            if (pre.Length==0 || pre.Length%8!=0) return false;
+            
+            byte[] signature = challengeVars.signature[sigIndex];
+            byte[] signableBytes = challengeVars.signableBytes[sigIndex];
+            byte[] Rs_signatureHigh = signature.Range(0, 32);
+            byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
+            byte[] preBytes = ObjectToBytes(pre);
+            return CheckBytesv2(preBytes, hashableBytes);
+        }
+        
+        //deprecated
+	    private static bool ChallengeCheckBytes(byte[] collatId, byte[] txHash, int sigIndex, byte[] pubK)
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            if (o==null) return false;
+            challengeVars = (GeneralChallengeVariables)o;
+            
             ulong[] pre = challengeVars.pre[sigIndex];
             byte[] signature = challengeVars.signature[sigIndex];
             byte[] signableBytes = challengeVars.signableBytes[sigIndex];
             byte[] Rs_signatureHigh = signature.Range(0, 32);
             byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
-            Storage.Put("d1", Rs_signatureHigh);
-            Storage.Put("d2", pubK);
-            Storage.Put("d3", signableBytes);
-            
-            Storage.Put("2hash", hashableBytes);
             
             return checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1]);
         }
@@ -942,23 +1156,34 @@ namespace smartBNB
         private static bool ChallengeSha512(byte[] collatId, byte[] txHash, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            if (o==null) return false;
+            challengeVars = (GeneralChallengeVariables)o;
+            
             ulong[] pre = challengeVars.pre[sigIndex];
             ulong[] hash = challengeVars.preHash[sigIndex];
 
             ulong[] expectedHash = sha512(pre);
             
-            for (int i=0; i<expectedHash.Length; i++)
-                if(expectedHash[i]!=hash[i]) return false;
+            if (expectedHash != null && expectedHash.Length == hash.Length)
+            {
+                int i = 0;
+                while (i < expectedHash.Length && (expectedHash[i] == hash[i]))
+                    i++;
+                if (i == expectedHash.Length)
+                    return true;
+            }
             
-            return true;
+            return false;
         }
         
         private static bool ChallengeSha512ModQ(byte[] collatId, byte[] txHash, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
-            ulong[] pre = challengeVars.pre[sigIndex];
+            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            if (o==null) return false;
+            challengeVars = (GeneralChallengeVariables)o;
+            
             ulong[] hash = challengeVars.preHash[sigIndex];
             BigInteger mod = challengeVars.preHashMod[sigIndex];
             
@@ -969,35 +1194,106 @@ namespace smartBNB
         
         private static bool ChallengePointEqual(byte[] collatId, byte[] txHash, int sigIndex, BigInteger p, BigInteger d)
         {
+            int iint = 31;
+            int istep = (sigIndex*32+iint)%slicesLen;
+            int iarr = (iint+sigIndex*32)/slicesLen; 
+            string bs_sb = "sb"+((BigInteger)(iarr+48)).AsByteArray().AsString();
+            string bs_ha = "ha"+((BigInteger)(iarr+48)).AsByteArray().AsString();
+            string Qbs = "Qs_"+bs_sb;
+            BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
+            
+            /*Object o = getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
+            if (o==null) return false;
+            BigInteger[][] Qssb = (BigInteger[][])o;*/
+            
+            Qbs = "Qs_"+bs_ha;
+            BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
+            BigInteger[] sB = Qssb[istep];
+            BigInteger[] hA = Qsha[istep];
+
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            challengeVars = (GeneralChallengeVariables)getStateFromStorage(0x0, collatId, txHash, null);
-            BigInteger[] sB = challengeVars.sB[sigIndex];
-            BigInteger[] hA = challengeVars.hA[sigIndex];
+            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            if (o==null) return false;
+            challengeVars = (GeneralChallengeVariables)o;
+
             BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
             BigInteger R1_ySigHigh = challengeVars.ys[sigIndex];
-            
+
             BigInteger[] R = {R0_xSigHigh, R1_ySigHigh, 1, mulmod(R0_xSigHigh, R1_ySigHigh, p)};
-			
+
             return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
         }
 
-	private static bool ChallengeEdDSA_PointMul_Setp(byte state, byte[] collatId, byte[] txHash, int sigIndex, int i, int n, BigInteger p, BigInteger d)
+	    private static bool ChallengeEdDSA_PointMul_Setp(byte[] collatId, byte[] txHash, int sigIndex, int i, string mulid, byte[][] pubksDecompressed, BigInteger p, BigInteger d)
         {
-            PointMulSteps pointMulSteps = new PointMulSteps();
-            pointMulSteps = (PointMulSteps)getStateFromStorage(state, collatId, txHash, sigIndex);
-            
+            int istep = (sigIndex*32+i-1)%slicesLen;//array index, negativeValue%value does not work in vm so its ok here
+            int iarr = (i+sigIndex*32)/slicesLen;
+            string bs = mulid+((BigInteger)(iarr+48)).AsByteArray().AsString();
+
+            string Pbs = "Ps_"+bs;
+            BigInteger[][] Ps = (BigInteger[][])getStateFromStorage(STG_POINTMUL, collatId, txHash, Pbs);
+            string Qbs = "Qs_"+bs;
+            BigInteger[][] Qs = (BigInteger[][])getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
+            string sbs = "ss_"+bs;
+            BigInteger[] ss = (BigInteger[])getStateFromStorage(STG_POINTMUL, collatId, txHash, sbs);
+
             PointMulStep initialStep = new PointMulStep();
-            initialStep.s = pointMulSteps.s[i];
-            initialStep.P = pointMulSteps.P[i];
-            initialStep.Q = pointMulSteps.Q[i];
             PointMulStep expectedStep = new PointMulStep();
-            expectedStep.s = pointMulSteps.s[n];
-            expectedStep.P = pointMulSteps.P[n];
-            expectedStep.Q = pointMulSteps.Q[n];
+
+            if (modPositive(istep,32)-32==-1)
+            {
+                GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+                Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+                if (o==null) return false;
+                challengeVars = (GeneralChallengeVariables)o;
+                
+                initialStep.Q = new BigInteger[]{ 0, 1, 1, 0 };
+                
+                if(mulid=="sb")
+                {
+                    BigInteger[] G = new BigInteger[4];
+                    byte[] g0 = {0x1a, 0xd5, 0x25, 0x8f, 0x60, 0x2d, 0x56, 0xc9, 0xb2, 0xa7, 0x25, 0x95, 0x60, 0xc7, 0x2c, 0x69, 0x5c, 0xdc, 0xd6, 0xfd, 0x31, 0xe2, 0xa4, 0xc0, 0xfe, 0x53, 0x6e, 0xcd, 0xd3, 0x36, 0x69, 0x21};
+                    G[0] = g0.AsBigInteger();
+                    byte[] g1 = {0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66};
+                    G[1] =g1.AsBigInteger();
+                    G[2] = 1;
+                    byte[] g3 = {0xa3, 0xdd, 0xb7, 0xa5, 0xb3, 0x8a, 0xde, 0x6d, 0xf5, 0x52, 0x51, 0x77, 0x80, 0x9f, 0xf0, 0x20, 0x7d, 0xe3, 0xab, 0x64, 0x8e, 0x4e, 0xea, 0x66, 0x65, 0x76, 0x8b, 0xd7, 0x0f, 0x5f, 0x87, 0x67};
+                    G[3] =g3.AsBigInteger();
+                    initialStep.P = G;
+                    
+                    byte[] signature = challengeVars.signature[sigIndex];
+                    byte[] s_signatureLow = signature.Range(32, 32);
+                    BigInteger s = s_signatureLow.AsBigInteger();
+                    
+                    initialStep.s = s;
+                }
+                else if(mulid=="ha")
+                {
+                    BigInteger[] A = new BigInteger[4];
+                    A[0] = pubksDecompressed[sigIndex*3].AsBigInteger();
+                    A[1] = pubksDecompressed[sigIndex*3+1].AsBigInteger();
+                    A[2] = 1;
+                    A[3] = pubksDecompressed[sigIndex*3+2].AsBigInteger();
+                    
+                    initialStep.P = A;
+                    
+                    BigInteger[] mods = challengeVars.preHashMod;
+                    initialStep.s = mods[sigIndex];
+                }
+            }
+            else
+            {
+                initialStep.s = ss[istep];
+                initialStep.P = Ps[istep];
+                initialStep.Q = Qs[istep];
+            }
             
-            
+            expectedStep.Q = Qs[istep+1];
+            expectedStep.s = ss[istep+1];
+            expectedStep.P = Ps[istep+1];
+
             PointMulStep res = new PointMulStep();
-            res = EdDSA_PointMul_ByRange(initialStep, n, p, d);
+            res = EdDSA_PointMul_ByRange(initialStep, 8, p, d);
             
             if ((expectedStep.Q[0] == res.Q[0])&
                 (expectedStep.Q[1] == res.Q[1])&
@@ -1007,10 +1303,106 @@ namespace smartBNB
                 (expectedStep.P[0] == res.P[0])&
                 (expectedStep.P[1] == res.P[1])&
                 (expectedStep.P[2] == res.P[2])&
-                (expectedStep.P[1] == res.P[1]))
+                (expectedStep.P[3] == res.P[3]))
                 return true;
             else
                 return false;
+        }
+        
+        private static bool ChallengeTxProof(byte[] collatId, byte[] txHash)
+        {
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            if (o==null) return false;
+            challengeVars = (GeneralChallengeVariables)o;
+
+            byte[] txproof = challengeVars.txproof;
+            byte[] blockHeader = challengeVars.blockHeader;
+            return Validate(txproof, blockHeader);
+        }
+        
+        public static BigInteger String2BigInteger(string str)
+        {
+            BigInteger res = 0;
+            byte[] a = str.AsByteArray();
+            int mult = 0;
+            byte[] k = new byte[1];
+            int index = 0;
+            for (int i=0; i<a.Length; i++)
+            {
+                byte b = a[i];
+                k[index] = b;
+                
+                if(a.Length-i==3)
+                    mult=100;
+                else if(a.Length-i==2)
+                    mult=10;
+                else if(a.Length-i==1)
+                    mult=1;
+                else
+                    mult=0;
+                    
+                res+=((k.AsBigInteger()-48)*mult);
+            }
+            return res;
+        }
+        
+        private static bool CheckBytesv2(byte[] preBytes, byte[] bytes)
+        { //todo realize test!!!!
+            bool end = false;
+            
+            int ipreB = 0;
+            int ib = 0;
+            int len = 1;
+            
+            while(ipreB < preBytes.Length)
+            {
+                ipreB += len+2;
+                len = preBytes[ipreB];
+                
+                if (len==0)
+                    continue;
+                
+                if(!end){
+                    for (int j = 0; j<(8-len); j++)
+                    {
+                        if (bytes[ib] != 0)
+                        {
+                            return false;
+                        }
+                        ib++;
+                    }
+                    for (int i=len; i>0; i--)
+                    {
+                        if(i > 8)
+                            if(preBytes[ipreB+i] == 0)
+                                continue;
+                            else
+                                return false;
+
+                        if(ib == bytes.Length && preBytes[ipreB+i] == 0x80)
+                            end = true;
+                        else if (!end && preBytes[ipreB+i] != bytes[ib])
+                            return false;
+                        else if (end && preBytes[ipreB+i] != 0)
+                            return false;
+                        else
+                            ib++;
+                    }
+                }
+                else
+                {
+                    BigInteger ulen = bytes.Length*8;
+                    byte[] b_ulen = ulen.AsByteArray();
+                    for (int i=0; i<len; i++)
+                    {
+                        if (preBytes[ipreB+i+1]!=b_ulen[i])
+                            return false;
+                    }
+                    return true;
+                }
+            }
+            return false;
         }
         
     }
