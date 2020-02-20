@@ -1,7 +1,6 @@
 package proof
 
 import (
-	"fmt"
 	"encoding/hex"
 	"github.com/binance-chain/go-sdk/client/rpc"
 	ctypes "github.com/binance-chain/go-sdk/common/types"
@@ -99,7 +98,6 @@ func GetPointMulSteps(isHA string, sigint string, its string, pubk string) strin
 	}
 	r := strings.Split(string(out), "\n")
 	joined := ""
-//	fmt.Print(string(sigint)+"\n")
 	s:=""
 	P:=""
 	Q:=""
@@ -142,15 +140,11 @@ func Invoke(spv SPV) string {
 	spv.XSigLow,
 	spv.YSigLow,
 	spv.SignBytes,
-	spv.HeaderHash,
 	spv.PresMsg,
 	spv.PresHash,
 	spv.PresHashMod,
-	//spv.SB,
-	//spv.HA,
 	spv.TxProof,
 	spv.Header).CombinedOutput()
-	/*spv.MulStepsSB,spv.MulStepsHA*/
 	if err != nil {
 		panic(err)
 	}
@@ -159,7 +153,6 @@ func Invoke(spv SPV) string {
 
 type SPV struct {
 	TxProof string
-	HeaderHash string
 	Header string
 	Signatures string
 	XSigLow string
@@ -197,7 +190,6 @@ func GetProof(txHash string) SPV {
 
 	//tx leaf hash
 	txProofLeafHash := restx.Proof.Proof.LeafHash
-	fmt.Println(txProofLeafHash)
 
 	//merkle path
 	txProofAunts := restx.Proof.Proof.Aunts
@@ -266,7 +258,6 @@ func GetProof(txHash string) SPV {
 	}
 
 	spv.Header = hex.EncodeToString(paqHeader)
-	spv.HeaderHash = hex.EncodeToString(h.Hash())
 
 	//signatures
 	//signatures from height+1

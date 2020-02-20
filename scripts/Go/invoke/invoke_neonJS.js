@@ -191,15 +191,12 @@ async function SaveState(scriptHash){
 		//2 byte[][] signatures 
 		var sigs = cmdArgs[2].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', sigs);
-		console.log("sigs", sigs)
 		//3 bigint[] xs
 		var xs = cmdArgs[3].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', xs);
-		console.log("xs", xs)
 		//4 bigint[] ys
 		var ys = cmdArgs[4].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', ys);
-		console.log("ys", ys)
 		//4 bigint[] ys
 		//5 byte[][] signablebytes
 		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
@@ -208,20 +205,18 @@ async function SaveState(scriptHash){
 //		var header = cmdArgs[6]
 //		pushParams(neonJSParams, 'Hex', header);
 		//6 ulong[][] pres
-		var pres = cmdArgs[7].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
+		var pres = cmdArgs[6].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
 		pushParams(neonJSParams, 'Array', pres);
 		//7 ulong[][] preshash
-		var presHash = cmdArgs[8].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
+		var presHash = cmdArgs[7].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
 		pushParams(neonJSParams, 'Array', presHash);
 		//8 bigint[] preshashmod
-		var presHashMod = cmdArgs[9].split(",").map(Neon.sc.ContractParam.integer)
+		var presHashMod = cmdArgs[8].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', presHashMod);
 		//9 byte[] txproof
-		console.log(cmdArgs[10])
-		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
+		pushParams(neonJSParams, 'Hex', cmdArgs[9]);
 		//10 byte[] blockHeader
-		console.log(cmdArgs[11])
-		pushParams(neonJSParams, 'Hex', cmdArgs[11]);
+		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
 		//10 bigint[][] sB
 //		var sb = cmdArgs[10].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
 //		pushParams(neonJSParams, 'Array', sb);
@@ -328,7 +323,6 @@ function Challenge1(scriptHash){
 
 		//0 byte[] calleraddr
 		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-		console.log(ECO_WALLET._address)
 		//1 byte[] txid
 		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
 		//2 int signature id
@@ -450,8 +444,8 @@ function RemoveStorage(scriptHash){
 }
 
 
-var scriptHash = "9746e28d8fd2ef0ef5c7c5ff7dfe032474294d21"
+var scriptHash = "36c98a1b0ccea19eb2d27ccc9261e4c5620041b8"
 //SaveState(scriptHash)
-Challenge4(scriptHash)
+Challenge6(scriptHash)
 //IsSaved(scriptHash)
 //RemoveStorage(scriptHash)
