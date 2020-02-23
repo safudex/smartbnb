@@ -198,6 +198,8 @@ namespace smartBNB
                 }
                 else if (operation=="proofIsSaved")
                     return proofIsSaved((byte[])args[0], (byte[])args[1]);
+                else if (operation=="activateChallenge")
+                    return activateChallenge((byte[])args[0], (byte[])args[1]);
                 else if (operation=="removeStorage")//only for debug!!
                     return removeStorage((byte[])args[0], (byte[])args[1]);
                 else
@@ -226,6 +228,14 @@ namespace smartBNB
                 }
             }
             Storage.Put("isSaved", "true");
+            return true;
+        }
+        
+        private static bool activateChallenge(byte[] collatId, byte[] txHash)
+        {
+            byte[] s = collatId.Concat(txHash);
+
+            Storage.Put(s, 0x1);
             return true;
         }
         
@@ -1114,7 +1124,11 @@ namespace smartBNB
 
             byte[] blockHash = HashRawHeader(rawHeader);
             
-            return AreEqual(blockHash, signableBytes.Range(16,32));
+            byte round = signableBytes.Range(0, 1)[0];
+            
+            int blockHashStart = round > 0 ? 27 : 17;
+            
+            return AreEqual(blockHash, signableBytes.Range(blockHashStart, 32));
             //if return false; -> throw new Exception("Hash not contained in signableBytes");
         }
         
@@ -1130,8 +1144,10 @@ namespace smartBNB
             
             byte[] signature = challengeVars.signature[sigIndex];
             byte[] signableBytes = challengeVars.signableBytes[sigIndex];
+            signableBytes = signableBytes.Range(1, signableBytes.Length-1);
             byte[] Rs_signatureHigh = signature.Range(0, 32);
             byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
+            
             byte[] preBytes = ObjectToBytes(pre);
             return CheckBytesv2(preBytes, hashableBytes);
         }
@@ -1148,7 +1164,7 @@ namespace smartBNB
             byte[] signature = challengeVars.signature[sigIndex];
             byte[] signableBytes = challengeVars.signableBytes[sigIndex];
             byte[] Rs_signatureHigh = signature.Range(0, 32);
-            byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes);
+            byte[] hashableBytes = Rs_signatureHigh.Concat(pubK).Concat(signableBytes.Range(1, signableBytes.Length-1));
             
             return checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1]);
         }
