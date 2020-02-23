@@ -1,122 +1,53 @@
-const Neon=require("@cityofzion/neon-js")
 const fs = require('fs');
 const axios = require('axios');
-
+const Neon = require("@cityofzion/neon-js");
 var ECO_WALLET = new Neon.wallet.Account("KxDgvEKzgSBPPfuVfw67oPQBSjidEiqTHURKSDL1R7yGaGYAeYnr");
+var scriptHash = "05966f89303289902c28c39492ba30b75c1867b2" //const
+const cmdArgs = process.argv.slice(2)
+const node = "https://node"+randomInt(1, 3)+".neocompiler.io"
+const api = new Neon.api.neoCli.instance(node);
+const txHash = "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6"
 
-function toBase58(beScriptHash) {
-  if(beScriptHash.length==42) // remove '0x'
-    beScriptHash = beScriptHash.slice(2);
-  if(beScriptHash.length==40) // 20 bytes (40 char hexstring)
-    return Neon.wallet.getAddressFromScriptHash(beScriptHash);
-  else
-    return "";
-}
-
-function createGasAndNeoIntent(to, neo, gas) {
-    var intent;
-    if (neo > 0 && gas > 0)
-        intent = Neon.api.makeIntent({
-            NEO: neo,
-            GAS: gas
-        }, to)
-
-    if (neo == 0 && gas > 0)
-        intent = Neon.api.makeIntent({
-            GAS: gas
-        }, to)
-
-    if (neo > 0 && gas == 0)
-        intent = Neon.api.makeIntent({
-            NEO: neo
-        }, to)
-    return intent;
-}
-
-function revertHexString(hex) {
-    return Neon.u.reverseHex(hex);
-}
-
-function signTXWithSingleSigner(signerAccount, constructTxPromise) {
-    return signTxPromise = constructTxPromise.then(transaction => {
-
-        transaction.addAttribute(32, revertHexString(signerAccount._scriptHash));
-
-        if (transaction.inputs.length == 0)
-            transaction.addRemark(Date.now().toString() + Neon.u.ab2hexstring(Neon.u.generateRandomArray(4)));
-
-        const txHex = transaction.serialize(false);
-
-        transaction.addWitness(Neon.tx.Witness.fromSignature(Neon.wallet.sign(txHex, signerAccount.privateKey), signerAccount.publicKey));
-
-        return transaction;
-    });
-}
-
-async function InvokeFromAccount(idToInvoke, mynetfee, mysysgasfee, neo, gas, contract_scripthash, contract_operation, nodeToCall, networkToCall, neonJSParams) {
-    if (contract_scripthash == "" || !Neon.default.is.scriptHash(contract_scripthash)) {
-        return "";
+async function getTxResult(txid, leftAttemps){
+    let txres = await axios.post(node, { jsonrpc: "2.0", id: 5, method: "getapplicationlog", params: [txid] })
+    if (txres.data.error && leftAttemps > 0 ) {
+        console.log(leftAttemps, txid, txres.data.error)
+        sleep(1000)
+        txres = await getTxResult(txid, leftAttemps-1)
     }
-
-	//setNeonApiProvider(networkToCall);
-	NEON_API_PROVIDER = new Neon.api.neoCli.instance(nodeToCall);
-
-    var intent = createGasAndNeoIntent(toBase58(contract_scripthash), neo, gas);
-
-    var sb = Neon.default.create.scriptBuilder(); //new ScriptBuilder();
-    // PUSH parameters BACKWARDS!!
-    for (var i = neonJSParams.length - 1; i >= 0; i--)
-        sb._emitParam(neonJSParams[i]);
-    sb._emitAppCall(contract_scripthash, false); // tailCall = false
-    var myscript = sb.str;
-
-    var constructTx = NEON_API_PROVIDER.getBalance(ECO_WALLET._address).then(balance => {
-        // Create invocation transaction with desired systemgas (param gas)
-        let transaction = new Neon.tx.InvocationTransaction({
-            gas: mysysgasfee
-        });
-
-        // Attach intents
-        if (neo > 0)
-            transaction.addIntent("NEO", neo, toBase58(contract_scripthash));
-        if (gas > 0)
-            transaction.addIntent("GAS", gas, toBase58(contract_scripthash));
-
-        // addint invocation script
-        transaction.script = myscript;
-
-        // Attach extra network fee when calculating inputs and outputs
-        transaction.calculate(balance, null, mynetfee);
-
-        return transaction;
-    });
-
-    var invokeParams = transformInvokeParams(ECO_WALLET._address, mynetfee, mysysgasfee, neo, gas, neonJSParams, contract_scripthash);
-    const signedTx = signTXWithSingleSigner(ECO_WALLET, constructTx);
-
-    var txHash;
-    return signedTx
-        .then(transaction => {
-            txHash = transaction.hash;
-            const client = new Neon.rpc.RPCClient(nodeToCall);
-            return client.sendRawTransaction(transaction.serialize(true));
-        })
-        .then(res => {
-			return handleInvoke(res, txHash, invokeParams, contract_scripthash);
-        })
-        .catch(handleErrorInvoke);
-
+    else if (leftAttemps < 0) {
+        console.log(leftAttemps, txid, txres.data.error)
+        return null
+    }
+    
+    return txres
 }
 
-function handleInvoke(res, txHash, invokeParams, contract_scripthash){
-	fs.appendFileSync('./logs/invokes', JSON.stringify(res, txHash) + "\n");
-	return res ? txHash: ""
+async function invokeOperation(operation, args, gas, fees){
+    console.log(args.length)
+
+    let txr
+    try {
+        const response = await invoke(operation, args, gas, fees)
+        txr = (await getTxResult(response.txid, 2*60)).data.result.executions[0]
+        if (!txr) {
+            console.log("Attemps exhausted")
+            //retry
+        }
+        console.log(txr)//return txr
+    } catch (error) {
+        console.log(error.message)
+    }
 }
 
-function handleErrorInvoke(err){
-	fs.appendFileSync('./logs/invokes', JSON.stringify(err)+"\n");
-    console.log("err:::::::::::", err)
-	return "";
+async function invoke(operation, args, gas, fees){
+    return Neon.default.doInvoke({
+        api, // The API Provider that we rely on for balance and rpc information
+        account: ECO_WALLET, // The sending Account
+        gas, // Additional GAS for invocation.
+        fees,
+        script: Neon.default.create.script({ scriptHash, operation, args })
+    }).then(res => {return res.response})
 }
 
 function pushParams(neonJSParams, type, value, ) {
@@ -135,59 +66,20 @@ function pushParams(neonJSParams, type, value, ) {
         neonJSParams.push(Neon.default.create.contractParam(type, value));
 }
 
-function transformInvokeParams(myaddress, mynetfee, mysysgasfee, neo, gas, neonJSParams, contract_scripthash) {
-    var invokeParams = {
-        contract_scripthash: contract_scripthash,
-        caller: myaddress,
-        mynetfee: mynetfee,
-        mysysgasfee: mysysgasfee,
-        neo: neo,
-        gas: gas,
-        neonJSParams: neonJSParams,
-        type: "invoke"
-    }
-    return invokeParams;
-}
-
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-var itry = 0
+
 function randomInt(low, high) {
   return Math.floor(Math.random() * (high - low) + low)
 }
-var node = "https://node"+randomInt(1, 3)+".neocompiler.io"
-async function invoke(scriptHash, invokeArr){
-//	fs.appendFileSync('./logs/invokes', "invoking: "+ " "+invokeArr[0].value+ " "+invokeArr[1].value[2].value+ " "+invokeArr[1].value[3].value)
-    const txHash = await InvokeFromAccount(0, 500, 500, 0, 0, scriptHash, "", node, "SharedPrivateNet", invokeArr)
-//	fs.appendFileSync('./logs/invokes', "invoked: "+" "+ invokeArr[0].value+" "+ invokeArr[1].value[2].value+ " "+invokeArr[1].value[3].value)
-    const data = { jsonrpc: "2.0", id: 5, method: "getapplicationlog", params: [txHash] }
-    var res;
-	do {
-        res = await axios.post(node, data)
-                .then((res) => {
-					fs.appendFileSync('./logs/invokes', itry +" "+JSON.stringify(res.data)+"\n");
-//                    console.log(itry++)
-//                    itry++
-                    console.log(res.data.result.executions[0].gas_consumed)
-                    return res.data.result.executions[0].vmstate;
-                }).catch((err) => {
-					fs.appendFileSync('./logs/invokes', itry +" "+JSON.stringify(err)+"\n");
-                    return ""
-                });
-        if (itry>100) res = true
-        if (!res) sleep(1000)
-    } while (!res)
-    console.log(res)
-	itry = 0
-}
-const cmdArgs = process.argv.slice(2)
-async function SaveState(scriptHash){
+
+async function SaveState(){
 		var neonJSParams = [];
 		//0 byte[] calleraddr
 		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
 		//1 byte[] txid
-		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6")//cmdArgs[1]);
+		pushParams(neonJSParams, 'Hex', txHash)//cmdArgs[1]);
 		//2 byte[][] signatures 
 		var sigs = cmdArgs[2].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', sigs);
@@ -197,13 +89,9 @@ async function SaveState(scriptHash){
 		//4 bigint[] ys
 		var ys = cmdArgs[4].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', ys);
-		//4 bigint[] ys
 		//5 byte[][] signablebytes
 		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', signableBytes);
-		//6 byte[] blockhash
-//		var header = cmdArgs[6]
-//		pushParams(neonJSParams, 'Hex', header);
 		//6 ulong[][] pres
 		var pres = cmdArgs[6].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
 		pushParams(neonJSParams, 'Array', pres);
@@ -217,17 +105,10 @@ async function SaveState(scriptHash){
 		pushParams(neonJSParams, 'Hex', cmdArgs[9]);
 		//10 byte[] blockHeader
 		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
-		//10 bigint[][] sB
-//		var sb = cmdArgs[10].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
-//		pushParams(neonJSParams, 'Array', sb);
-		//11 bigint[][] ha
-//		var ha = cmdArgs[11].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
-//		pushParams(neonJSParams, 'Array', ha);
-		invokeArr = []
-		pushParams(invokeArr, 'String', "savestate");
-		pushParams(invokeArr, 'Array', neonJSParams);
-		await invoke(scriptHash, invokeArr)
 
+        await invokeOperation("savestate", neonJSParams, 50, 10)
+
+        //state pointmul sb
 		//12 bigint[][] Qs_sb
 		//13 bigint[] ss_sb
 		//14 bigint[][] Ps_sb
@@ -251,7 +132,6 @@ async function SaveState(scriptHash){
 
 		
 		//Second invoke, state pointmul ha
-		neonJSParams = []
 		var ss_ha = []
 		var Ps_ha=[]
 		var Qs_ha=[]
@@ -270,10 +150,6 @@ async function SaveState(scriptHash){
 		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
 }
 
-var a = [[1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3], [1, 2, 3]]
-
-
-
 async function savePointMuls(arr, nchks, id, type) {
 		var j = arr.length/nchks
 		for (var i=0; i<nchks; i++) {
@@ -281,171 +157,152 @@ async function savePointMuls(arr, nchks, id, type) {
 				//0 byte[] calleraddr
 				pushParams(neonJSParams, 'Address', ECO_WALLET._address);
 				//1 byte[] txid
-				pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
+				pushParams(neonJSParams, 'Hex', txHash);
 				pushParams(neonJSParams, 'String', type)
 				pushParams(neonJSParams, 'String', id+i)
 				console.log(id+i)
 				pushParams(neonJSParams, 'Array', arr.slice(i*j, (i+1)*j))
-				var invokeArr = []
-				pushParams(invokeArr, 'String', "savestate");
-				pushParams(invokeArr, 'Array', neonJSParams);
-				await invoke(scriptHash, invokeArr)
+
+                await invokeOperation("savestate", neonJSParams, 50, 10)
 		}
 }
 
 function arrayTo2DArray1(list, howMany) {
-  var result = []
-  input = list.slice(0)
-  while (input[0]) {
-    result.push(input.splice(0, howMany))
-  }
-  return result
+    var result = []
+    input = list.slice(0)
+    while (input[0]) {
+        result.push(input.splice(0, howMany))
+    }
+    return result
 }
 
-function Challenge0(scriptHash){
-		var neonJSParams = [];
+function Challenge0(){
+    var neonJSParams = [];
 
-		//0 byte[] calleraddr
-		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-		//1 byte[] txid
-		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
-		//2 int signature id
-		pushParams(neonJSParams, 'Integer', 0);
-		var invokeArr = []
-		pushParams(invokeArr, 'String', "challenge 0");
-		pushParams(invokeArr, 'Array', neonJSParams);
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+    //2 int signature id
+    pushParams(neonJSParams, 'Integer', 0);
 
-		invoke(scriptHash, invokeArr)
+    invokeOperation("challenge 0", neonJSParams, 50, 10)
 }
 
-function Challenge1(scriptHash){
-		var neonJSParams = [];
+function Challenge1(){
+    var neonJSParams = [];
 
-		//0 byte[] calleraddr
-		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-		//1 byte[] txid
-		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
-		//2 int signature id
-		pushParams(neonJSParams, 'Integer', 7);
-		var invokeArr = []
-		pushParams(invokeArr, 'String', "challenge 1");
-		pushParams(invokeArr, 'Array', neonJSParams);
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+    //2 int signature id
+    pushParams(neonJSParams, 'Integer', 7);
 
-		invoke(scriptHash, invokeArr)
+    invokeOperation("challenge 1", neonJSParams, 50, 10)
 }
 
-function Challenge2(scriptHash){
-		var neonJSParams = [];
+function Challenge2(){
+    var neonJSParams = [];
 
-		//0 byte[] calleraddr
-		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-		//1 byte[] txid
-		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
-		//2 int signature id
-		pushParams(neonJSParams, 'Integer', 0);
-		var invokeArr = []
-		pushParams(invokeArr, 'String', "challenge 2");
-		pushParams(invokeArr, 'Array', neonJSParams);
-
-		invoke(scriptHash, invokeArr)
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+    //2 int signature id
+    pushParams(neonJSParams, 'Integer', 0);
+    invokeOperation("challenge 2", neonJSParams, 50, 10)
 }
 
-function Challenge3(scriptHash){
-		var neonJSParams = [];
+function Challenge3(){
+    var neonJSParams = [];
 
-		//0 byte[] calleraddr
-		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-		//1 byte[] txid
-		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
-		//2 int signature id
-		pushParams(neonJSParams, 'Integer', 0);
-		var invokeArr = []
-		pushParams(invokeArr, 'String', "challenge 3");
-		pushParams(invokeArr, 'Array', neonJSParams);
-
-		invoke(scriptHash, invokeArr)
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+    //2 int signature id
+    pushParams(neonJSParams, 'Integer', 0);
+    
+    invokeOperation("challenge 3", neonJSParams, 50, 10)
 }
 
-function Challenge4(scriptHash){
-		var neonJSParams = [];
+function Challenge4(){
+    var neonJSParams = [];
 
-		//0 byte[] calleraddr
-		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-		//1 byte[] txid
-		pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
-		//2 int signature id
-		pushParams(neonJSParams, 'Integer', 7);
-		var invokeArr = []
-		pushParams(invokeArr, 'String', "challenge 4");
-		pushParams(invokeArr, 'Array', neonJSParams);
-
-		invoke(scriptHash, invokeArr)
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+    //2 int signature id
+    pushParams(neonJSParams, 'Integer', 7);
+    
+    invokeOperation("challenge 4", neonJSParams, 50, 10)
 }
 
-function Challenge5(scriptHash){
-        var neonJSParams = [];
+function Challenge5(){
+    var neonJSParams = [];
 
-        //0 byte[] calleraddr
-        pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-        //1 byte[] txid
-        pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
-        //2 int signature id
-        pushParams(neonJSParams, 'Integer', 0);
-        //3 int step num
-        pushParams(neonJSParams, 'Integer', 0)
-        pushParams(neonJSParams, 'String', "sb");
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+    //2 int signature id
+    pushParams(neonJSParams, 'Integer', 4);
+    //3 int step num
+    pushParams(neonJSParams, 'Integer', 30)
+    pushParams(neonJSParams, 'String', "sb");
 
-        var invokeArr = []
-        pushParams(invokeArr, 'String', "challenge 5");
-        pushParams(invokeArr, 'Array', neonJSParams);
-        invoke(scriptHash, invokeArr)
+    invokeOperation("challenge 5", neonJSParams, 50, 10)
 }
 
-function Challenge6(scriptHash){
-        var neonJSParams = [];
+function Challenge6(){
+    var neonJSParams = [];
 
-        //0 byte[] calleraddr
-        pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-        //1 byte[] txid
-        pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
 
-        var invokeArr = []
-        pushParams(invokeArr, 'String', "challenge 6");
-        pushParams(invokeArr, 'Array', neonJSParams);
-        invoke(scriptHash, invokeArr)
+    invokeOperation("challenge 6", neonJSParams, 50, 10)
 
 }
 
-function IsSaved(scriptHash){
-        var neonJSParams = [];
+function IsSaved(){
+    var neonJSParams = [];
 
-        //0 byte[] calleraddr
-        pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-        //1 byte[] txid
-        pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
 
-        var invokeArr = []
-        pushParams(invokeArr, 'String', "proofIsSaved");
-        pushParams(invokeArr, 'Array', neonJSParams);
-        invoke(scriptHash, invokeArr)
-}
-function RemoveStorage(scriptHash){
-        var neonJSParams = [];
-
-        //0 byte[] calleraddr
-        pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-        //1 byte[] txid
-        pushParams(neonJSParams, 'Hex', "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6");
-
-        var invokeArr = []
-        pushParams(invokeArr, 'String', "removeStorage");
-        pushParams(invokeArr, 'Array', neonJSParams);
-        invoke(scriptHash, invokeArr)
+    invokeOperation("proofIsSaved", neonJSParams, 50, 10)
 }
 
+async function RemoveStorage(){
+    var neonJSParams = [];
 
-var scriptHash = "36c98a1b0ccea19eb2d27ccc9261e4c5620041b8"
-//SaveState(scriptHash)
-Challenge6(scriptHash)
-//IsSaved(scriptHash)
-//RemoveStorage(scriptHash)
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+    
+    await invokeOperation("removeStorage", neonJSParams, 50, 10)
+}
+function ActivateChallenge(){
+    var neonJSParams = [];
+
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+
+    invokeOperation("activateChallenge", neonJSParams, 50, 10)
+}
+
+scriptHash = "05966f89303289902c28c39492ba30b75c1867b2"
+
+SaveState()
+//Challenge2()
+//IsSaved()
+//RemoveStorage()

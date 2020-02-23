@@ -50,7 +50,7 @@ func createVote(vd voteData) *v.Vote {
                     Hash: vd.hashBlock,
                     PartsHeader: v.PartSetHeader{
                             Total: vd.partsTotal,
-                            Hash:  vd.partsHash,
+                            Hash: vd.partsHash,
                     },
             },
             ValidatorAddress: vd.validatorAddr,
@@ -61,6 +61,7 @@ func createVote(vd voteData) *v.Vote {
 func VoteSignableHexBytes(vd voteData) string {
         vote := createPrecommit(vd)
         signBytes := vote.SignBytes("Binance-Chain-Tigris")
+		signBytes = append([]byte{byte(vd.round)}, signBytes...)
         return hex.EncodeToString(signBytes)
 }
 
@@ -172,15 +173,13 @@ func GetProof(txHash string) SPV {
 	spv := SPV{}
 	spv.TxId = txHash
 	//init rpc client
-	nodeAddr := "http://dataseed1.binance.org:80"
+	nodeAddr := "http://dataseed2.binance.org:80"
 	client := rpc.NewRPCClient(nodeAddr, ctypes.ProdNetwork)
 	//getting tx from node
 	bytesTxHash, _ := hex.DecodeString(txHash)
 	restx, _ := client.Tx(bytesTxHash, true)
-
 	//tx block
 	txBlockHeight := int64(restx.Height)
-
 	//proof
 	//total leafs
 	txProofTotal := restx.Proof.Proof.Total
