@@ -1,7 +1,6 @@
 package proof
 
 import (
-	"fmt"
 	"encoding/hex"
 	"github.com/binance-chain/go-sdk/client/rpc"
 	ctypes "github.com/binance-chain/go-sdk/common/types"
@@ -62,10 +61,7 @@ func createVote(vd voteData) *v.Vote {
 func VoteSignableHexBytes(vd voteData) string {
         vote := createPrecommit(vd)
         signBytes := vote.SignBytes("Binance-Chain-Tigris")
-		fmt.Println("len(hex.EncodeToString(signBytes))")
 		signBytes = append([]byte{byte(vd.round)}, signBytes...)
-		fmt.Println(hex.EncodeToString(signBytes))
-		fmt.Println(hex.EncodeToString(vd.hashBlock))
         return hex.EncodeToString(signBytes)
 }
 

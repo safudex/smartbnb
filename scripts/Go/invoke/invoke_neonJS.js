@@ -23,10 +23,12 @@ async function getTxResult(txid, leftAttemps){
     return txres
 }
 
-async function invokeOperation(operation, args, gas){
+async function invokeOperation(operation, args, gas, fees){
+    console.log(args.length)
+
     let txr
     try {
-        const response = await invoke(operation, args, gas)
+        const response = await invoke(operation, args, gas, fees)
         txr = (await getTxResult(response.txid, 2*60)).data.result.executions[0]
         if (!txr) {
             console.log("Attemps exhausted")
@@ -38,11 +40,12 @@ async function invokeOperation(operation, args, gas){
     }
 }
 
-async function invoke(operation, args, gas){
+async function invoke(operation, args, gas, fees){
     return Neon.default.doInvoke({
         api, // The API Provider that we rely on for balance and rpc information
         account: ECO_WALLET, // The sending Account
         gas, // Additional GAS for invocation.
+        fees,
         script: Neon.default.create.script({ scriptHash, operation, args })
     }).then(res => {return res.response})
 }
@@ -103,7 +106,7 @@ async function SaveState(){
 		//10 byte[] blockHeader
 		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
 
-        await invokeOperation("savestate", neonJSParams, 50)
+        await invokeOperation("savestate", neonJSParams, 50, 10)
 
         //state pointmul sb
 		//12 bigint[][] Qs_sb
@@ -129,7 +132,6 @@ async function SaveState(){
 
 		
 		//Second invoke, state pointmul ha
-		neonJSParams = []
 		var ss_ha = []
 		var Ps_ha=[]
 		var Qs_ha=[]
@@ -161,7 +163,7 @@ async function savePointMuls(arr, nchks, id, type) {
 				console.log(id+i)
 				pushParams(neonJSParams, 'Array', arr.slice(i*j, (i+1)*j))
 
-                await invokeOperation("savestate", neonJSParams, 50)
+                await invokeOperation("savestate", neonJSParams, 50, 10)
 		}
 }
 
@@ -184,7 +186,7 @@ function Challenge0(){
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 0);
 
-    invokeOperation("challenge 0", neonJSParams, 50)
+    invokeOperation("challenge 0", neonJSParams, 50, 10)
 }
 
 function Challenge1(){
@@ -197,7 +199,7 @@ function Challenge1(){
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 7);
 
-    invokeOperation("challenge 1", neonJSParams, 50)
+    invokeOperation("challenge 1", neonJSParams, 50, 10)
 }
 
 function Challenge2(){
@@ -209,7 +211,7 @@ function Challenge2(){
     pushParams(neonJSParams, 'Hex', txHash);
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 0);
-    invokeOperation("challenge 2", neonJSParams, 50)
+    invokeOperation("challenge 2", neonJSParams, 50, 10)
 }
 
 function Challenge3(){
@@ -222,7 +224,7 @@ function Challenge3(){
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 0);
     
-    invokeOperation("challenge 3", neonJSParams, 50)
+    invokeOperation("challenge 3", neonJSParams, 50, 10)
 }
 
 function Challenge4(){
@@ -235,7 +237,7 @@ function Challenge4(){
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 7);
     
-    invokeOperation("challenge 4", neonJSParams, 50)
+    invokeOperation("challenge 4", neonJSParams, 50, 10)
 }
 
 function Challenge5(){
@@ -251,7 +253,7 @@ function Challenge5(){
     pushParams(neonJSParams, 'Integer', 30)
     pushParams(neonJSParams, 'String', "sb");
 
-    invokeOperation("challenge 5", neonJSParams, 50)
+    invokeOperation("challenge 5", neonJSParams, 50, 10)
 }
 
 function Challenge6(){
@@ -262,7 +264,7 @@ function Challenge6(){
     //1 byte[] txid
     pushParams(neonJSParams, 'Hex', txHash);
 
-    invokeOperation("challenge 6", neonJSParams, 50)
+    invokeOperation("challenge 6", neonJSParams, 50, 10)
 
 }
 
@@ -274,7 +276,7 @@ function IsSaved(){
     //1 byte[] txid
     pushParams(neonJSParams, 'Hex', txHash);
 
-    invokeOperation("proofIsSaved", neonJSParams, 50)
+    invokeOperation("proofIsSaved", neonJSParams, 50, 10)
 }
 
 async function RemoveStorage(){
@@ -285,7 +287,7 @@ async function RemoveStorage(){
     //1 byte[] txid
     pushParams(neonJSParams, 'Hex', txHash);
     
-    await invokeOperation("removeStorage", neonJSParams, 50)
+    await invokeOperation("removeStorage", neonJSParams, 50, 10)
 }
 function ActivateChallenge(){
     var neonJSParams = [];
@@ -295,12 +297,12 @@ function ActivateChallenge(){
     //1 byte[] txid
     pushParams(neonJSParams, 'Hex', txHash);
 
-    invokeOperation("activateChallenge", neonJSParams, 50)
+    invokeOperation("activateChallenge", neonJSParams, 50, 10)
 }
 
 scriptHash = "05966f89303289902c28c39492ba30b75c1867b2"
 
-//SaveState()
+SaveState()
 //Challenge2()
-IsSaved()
+//IsSaved()
 //RemoveStorage()
