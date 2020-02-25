@@ -1420,6 +1420,31 @@ namespace smartBNB
             }
             return false;
         }
+
+	//unmarshal
+
+
+ 	private static ulong[] Uvarint(ulong [] buf){
+    		ulong x=0;
+    		int s=0;
+    		ulong b=0;
+    		
+    		for (uint i = 0; i<buf.Length; i++)
+    		{
+    		    b = buf[i];
+    			if (b < 128)
+    			{
+    				if (i>9 || i==9 && buf[i]>1)
+    					return new ulong[]{0, 0-((ulong)i+1)};
+
+    				return new ulong[]{x|(b<<s), (ulong)i+1};
+    			}
+    			ulong n = (b&0x7f) << s;
+    			x |= n;
+    			s += 7;
+    		}
+    		return new ulong[]{0, 0};
+    	}
         
     }
 }
