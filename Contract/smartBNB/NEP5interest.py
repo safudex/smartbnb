@@ -33,9 +33,9 @@ deltaTime -= (1 << {it});\n" +\
 
 i = NUM_ITERATIONS
 code = BigInteger("rateDenominator", DENOMINATOR)
-code += f"while(deltaTime >> {i}){generateReduceCode(i)}"
+code += f"while((deltaTime >> {i}) > 0){generateReduceCode(i)}"
 while i>1:
     i -= 1
-    code += f"if(deltaTime >> {i}){generateReduceCode(i)}"
+    code += f"if((deltaTime >> {i}) > 0){generateReduceCode(i)}"
 
 print(code)
