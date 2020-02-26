@@ -280,7 +280,7 @@ namespace NEP5
             if (fromBalance.amount == amount){
                 asset.Delete(from);
 			} else {
-				fromBalance.amount -= amount;
+				fromBalance.amount = fromBalance.amount - amount;
                 asset.Put(from, Helper.Serialize(fromBalance));
 			}
 
