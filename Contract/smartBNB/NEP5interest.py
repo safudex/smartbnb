@@ -28,7 +28,7 @@ def generateReduceCode(it):
     return "{" +\
 BigInteger("rateNumerator", round((BLOCK_FACTOR**(2**it))*DENOMINATOR)) +\
 f"amount = (amount * rateNumerator) / rateDenominator;\n\
-deltaTime -= (1 << {it});\n" +\
+deltaTime -= magnitude;\n" +\
 "}\n"
 
 i = NUM_ITERATIONS
