@@ -22,4 +22,5 @@ def reverseNum(n):
     return "".join(hr)
 
 p = 2**255 - 19
-print("p = ", num2byteArray(p))
+if __name__ == "__main__":
+    print("p =", num2byteArray(p))
