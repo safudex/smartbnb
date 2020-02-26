@@ -286,7 +286,7 @@ namespace NEP5
 
             //Increase the payee balance
             Balance toBalance = updateBalance(deserializeBalance(asset.Get(to)));
-			toBalance.amount += amount;
+			toBalance.amount = toBalance.amount + amount;
             asset.Put(to, Helper.Serialize(toBalance));
 
             Transferred(from, to, amount);
