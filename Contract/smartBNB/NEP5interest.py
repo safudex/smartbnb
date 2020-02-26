@@ -34,7 +34,7 @@ i = NUM_ITERATIONS
 code = BigInteger("rateDenominator", DENOMINATOR)
 code += BigInteger("magnitude", 2**NUM_ITERATIONS)
 code += f"while(deltaTime >= magnitude){generateReduceCode(i)}"
-while i>1:
+while i>=1:
     i -= 1
     code += f"magnitude /= 2;\nif(deltaTime >= magnitude){generateReduceCode(i)}"
 
