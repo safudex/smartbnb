@@ -53,6 +53,7 @@ namespace NEP5
 			}
 		}
 
+		// DO NOT USE TO UPDATE COLLATERAL'S BALANCES, this function is an approximation of the real function and, as such, will always return a value lower than what the real function would. Although the difference is really small, this could be used by collaterals to reduce their collateral faster than permitted.
 		private static BigInteger updateAmount(BigInteger amount, BigInteger lastTransfer, BigInteger currentTime){
 			BigInteger deltaTime = currentTime - lastTransfer;
 
@@ -238,10 +239,10 @@ namespace NEP5
         }
 
         [DisplayName("name")]
-        public static string Name() => "GinoMo"; //name of the token
+        public static string Name() => "smartBNB"; //name of the token
 
         [DisplayName("symbol")]
-        public static string Symbol() => "GM"; //symbol of the token
+        public static string Symbol() => "SBNB"; //symbol of the token
 
         [DisplayName("supportedStandards")]
         public static string[] SupportedStandards() => new string[] { "NEP-5", "NEP-7", "NEP-10" };
