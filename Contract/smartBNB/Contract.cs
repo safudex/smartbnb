@@ -1421,6 +1421,12 @@ namespace smartBNB
             return false;
         }
 
+        //get leafHash from encoded tx        
+        private static byte[] getLeafHashByTxBytes(byte[] tx)
+        {
+            return LeafHash(Sha256(tx));
+        }
+
 	//unmarshal
 
     	[Serializable]
