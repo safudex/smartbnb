@@ -1423,18 +1423,26 @@ namespace smartBNB
 
 	//unmarshal
 
-
- 	private static ulong[] Uvarint(ulong [] buf){
+    	[Serializable]
+        struct Output
+        {
+            public byte[] addr;
+            public BigInteger amount;
+            public string denom;
+        }
+        
+    	private static ulong[] Uvarint(ulong [] bz, int[] ini_fin)
+    	{
     		ulong x=0;
     		int s=0;
     		ulong b=0;
     		
-    		for (uint i = 0; i<buf.Length; i++)
+    		for (int i = 0; i<(ini_fin[1]-ini_fin[0]+1); i++)
     		{
-    		    b = buf[i];
+    		    b = bz[ini_fin[0]+i];
     			if (b < 128)
     			{
-    				if (i>9 || i==9 && buf[i]>1)
+    				if (i>9 || i==9 && b>1)
     					return new ulong[]{0, 0-((ulong)i+1)};
 
     				return new ulong[]{x|(b<<s), (ulong)i+1};
@@ -1445,6 +1453,90 @@ namespace smartBNB
     		}
     		return new ulong[]{0, 0};
     	}
+    	
+    	private static ulong[] DecodeUvarint(ulong[] bz, int[] ini_fin)
+    	{
+    	    ulong[] un = Uvarint(bz, ini_fin);
+    	    
+    	    if (un[1]<=0)
+    	        return new ulong[]{0, 0};
+	        
+	        return un;
+    	}
+    	
+    	private static int[] DecodeByteSlice(ulong[] bz, int[] ini_fin)
+    	{
+    	    ulong[] count_n = DecodeUvarint(bz, ini_fin);
+    	    
+    	    if (count_n[0]<0 || (ini_fin[1]-ini_fin[0])+1 < (int)count_n[0])
+    	        return new int[]{0, 0};
+    	    
+    	    ini_fin[0] = ini_fin[0] + (int)count_n[1];
+    	    ini_fin[1] = ini_fin[0] + (int)count_n[0] - (int)count_n[1];
+    	    return ini_fin;
+    	}
+        
+        private static Output decodeOutput(ulong[] bz)
+        {
+            Output o = new Output();
+            int[] ini_fin = new int[2];
+            ini_fin[0] = 0;
+            ini_fin[1] = bz.Length-1;
+            
+            //decode struct
+            ini_fin = DecodeByteSlice(bz, ini_fin);
+            if (ini_fin[0] == ini_fin[1])
+                return o;
+
+            //skip decoding of field number and type
+            ini_fin[0]=ini_fin[0]+1;
+            
+            //DECODE ADDRESS
+            int[] add_ini_fin = DecodeByteSlice(bz, ini_fin);
+            int addLen = (add_ini_fin[1]-add_ini_fin[0])+1;
+            if (addLen != 20)
+                return o;
+            
+            byte[] address = new byte[20];
+            byte b;
+            for (int i = 0; i < 20+1; i++)
+            {
+                b=(byte)bz[add_ini_fin[0]+i];
+                address[i] = b;
+            }
+            o.addr = address;
+            
+            //slide till coins
+            ini_fin[0] = add_ini_fin[1]+1;
+            ini_fin[1] = bz.Length-1;
+            
+            //skip decoding of field number and type
+            ini_fin[0]=ini_fin[0]+3;
+            
+            //DECODE ASSET
+            int[] ass_ini_fin = DecodeByteSlice(bz, ini_fin);
+            byte[] asset = new byte[3];
+            for (int i = 0; i < 3; i++)
+            {
+                b=(byte)bz[ass_ini_fin[0]+i];
+                asset[i] = b;
+            }
+            o.denom = asset.AsString();
+            
+            //slide till amount
+            ini_fin[0] = ass_ini_fin[1]+1;
+            ini_fin[1] = bz.Length-1;
+            
+            //skip decoding of field number and type
+            ini_fin[0]=ini_fin[0]+1;
+
+            //DECODE AMOUNT
+            ulong[] num_n = DecodeUvarint(bz, ini_fin);
+            BigInteger amount = num_n[0];
+            o.amount = amount;
+
+            return o;
+        }
         
     }
 }
