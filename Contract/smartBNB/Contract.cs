@@ -1482,12 +1482,12 @@ namespace smartBNB
     	    return ini_fin;
     	}
         
-        private static Output decodeOutput(ulong[] bz)
+    	private static Output decodeOutput(ulong[] bz, int ini, int len)
         {
             Output o = new Output();
             int[] ini_fin = new int[2];
-            ini_fin[0] = 0;
-            ini_fin[1] = bz.Length-1;
+            ini_fin[0] = ini;
+            ini_fin[1] = ini+len-1;
             
             //decode struct
             ini_fin = DecodeByteSlice(bz, ini_fin);
@@ -1502,16 +1502,17 @@ namespace smartBNB
             int addLen = (add_ini_fin[1]-add_ini_fin[0])+1;
             if (addLen != 20)
                 return o;
-            
+                
             byte[] address = new byte[20];
             byte b;
-            for (int i = 0; i < 20+1; i++)
+            
+            for (int i = 0; i < 20; i++)
             {
                 b=(byte)bz[add_ini_fin[0]+i];
                 address[i] = b;
             }
             o.addr = address;
-            
+
             //slide till coins
             ini_fin[0] = add_ini_fin[1]+1;
             ini_fin[1] = bz.Length-1;
@@ -1536,12 +1537,30 @@ namespace smartBNB
             //skip decoding of field number and type
             ini_fin[0]=ini_fin[0]+1;
 
-            //DECODE AMOUNT
             ulong[] num_n = DecodeUvarint(bz, ini_fin);
             BigInteger amount = num_n[0];
             o.amount = amount;
 
             return o;
+        }
+        
+        //TODO control unexpected faults + get from storage txbytes, outputstart and outputlen
+        private static bool ChallengeTxData(ulong[] collatId, ulong[] txbytes, int outputStart, int outputLen)
+        {
+            Output o = new Output();
+            o.addr = new byte[20];
+            o = decodeOutput(txbytes, outputStart, outputLen);
+            
+            //GET FROM STORAGE AMOUNT, BNBADDR
+            BigInteger amount = 50000000;//get from storage
+            byte[] bnbaddr = {210, 70, 25, 113, 160, 90, 159, 247, 12, 180, 104, 194, 51, 29, 152, 47, 90, 15, 172, 236};//get from storage
+            
+            for (int i=0; i<20; i++)
+            {
+                if (o.addr[i]!=bnbaddr[i]) return false;
+            }
+            
+            return (amount == o.amount && o.denom == "BNB");
         }
         
     }
