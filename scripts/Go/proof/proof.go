@@ -1,6 +1,7 @@
 package proof
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"github.com/binance-chain/go-sdk/client/rpc"
 	ctypes "github.com/binance-chain/go-sdk/common/types"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"io"
 	"os"
+	"fmt"
 )
 
 var cdc = types.NewCodec()
@@ -145,7 +147,9 @@ func Invoke(spv SPV) string {
 	spv.PresHash,
 	spv.PresHashMod,
 	spv.TxProof,
-	spv.Header).CombinedOutput()
+	spv.Header,
+	spv.TxBytes,
+	spv.txLong).CombinedOutput()
 	if err != nil {
 		panic(err)
 	}
@@ -167,17 +171,50 @@ type SPV struct {
 	HA string
 	MulStepsSB string
 	MulStepsHA string
+	TxBytes string
+	txLong string
 }
 
 func GetProof(txHash string) SPV {
 	spv := SPV{}
 	spv.TxId = txHash
 	//init rpc client
-	nodeAddr := "http://dataseed2.binance.org:80"
+	nodeAddr := "http://dataseed1.binance.org:80"
 	client := rpc.NewRPCClient(nodeAddr, ctypes.ProdNetwork)
 	//getting tx from node
 	bytesTxHash, _ := hex.DecodeString(txHash)
 	restx, _ := client.Tx(bytesTxHash, true)
+
+	txbytes := restx.Proof.Data
+	fmt.Println("txbytes", txbytes)
+	fmt.Println("s")
+	start, l, bz := getOutputStart(txbytes)
+    paqtx := make([]byte, 0)
+    paqtx = append(paqtx, []byte{byte(start)}...)//Warning: assuming txProofIndex always < byteSize
+    paqtx = append(paqtx, []byte{byte(l)}...)//Warning: assuming txProofIndex always < byteSize
+    paqtx = append(paqtx, txbytes...)
+fmt.Println(txHash, "____________________________________paqtx[0]_", len(bz))
+fmt.Println(start, paqtx[0])
+fmt.Println(l, paqtx[1])
+fmt.Println("____________________________________paqtx[0]_")
+	strtxl:=""
+	for i := 0; i < len(bz); i++ {
+		strtxl+=strconv.Itoa(int(bz[i]))
+		if i<len(bz)-1{
+			strtxl+=","
+		}
+	}
+	strtx:=""
+	for i := 0; i < len(paqtx); i++ {
+		strtx+=strconv.Itoa(int(paqtx[i]))
+		if i<len(paqtx)-1{
+			strtx+=","
+		}
+	}
+
+	fmt.Println("s", strtxl, ",")
+	spv.txLong = strtxl
+	spv.TxBytes = hex.EncodeToString(paqtx)
 	//tx block
 	txBlockHeight := int64(restx.Height)
 	//proof
@@ -373,4 +410,83 @@ func GetProof(txHash string) SPV {
 	spv.SB = sB
 	spv.HA = hA
 	return spv
+}
+
+func DecodeUvarint(bz []byte) (u uint64, n int) {
+	u, n = binary.Uvarint(bz)
+	if n == 0 {
+		// buf too small
+		return
+	} else if n < 0 {
+		// value larger than 64 bits (overflow)
+		// and -n is the number of bytes read
+		n = -n
+		return
+	}
+	return
+}
+
+func getOutputStart(bz []byte) (start int, length int, bzi []byte) {
+	_, n := binary.Uvarint(bz)
+	bz = bz[n:]
+	start += n
+
+	bz = bz[4:]
+	start += 4
+
+	var value64 = uint64(0)
+	value64, n = DecodeUvarint(bz)
+	bz = bz[n:]
+	start += n
+
+	value64, n = DecodeUvarint(bz)
+	bz = bz[n:]
+	start += n
+
+	//fmt.Println("val64", value64)
+	//10 78 42 entra dentro de slice no byte
+	//slide field number and type
+	value64, n = DecodeUvarint(bz)
+	bz = bz[n:]
+	start += n
+
+	var count, _n = uint64(0), int(0)
+	//buf, _n, err = DecodeByteSlice(bz)
+	count, _n = DecodeUvarint(bz)
+	bz = bz[_n:]
+	start += _n
+	//	bz = bz[:count]
+
+	//decode fieldnumber and type
+	value64, n = DecodeUvarint(bz)
+	bz = bz[n:]
+	start += n
+
+	//35 10 20
+	//buf, _n, err = DecodeByteSlice(bz)
+	count, _n = DecodeUvarint(bz)
+	bz = bz[_n:]
+	start += n
+	bz = bz[count:]
+	start += int(count)
+
+	//	if slide(&bz, nil, _n) && err != nil {
+	//en buf hay guardado input
+
+	//entonces
+	bz = bz[_n:] //aqui bz empieza por 18 el resultado
+	start += _n
+
+	//			tenemos output(18 mas output + cosas)
+	//decode fieldnumber and type
+	value64, n = DecodeUvarint(bz)
+	bz = bz[:value64+1]
+
+	//decode fieldnumber and type
+	/*value64, n = DecodeUvarint(bz)
+	bz = bz[n:]
+	start += n*/
+	length = len(bz)
+	bzi = bz
+	return
 }

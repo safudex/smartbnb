@@ -31,6 +31,8 @@ namespace smartBNB
             public BigInteger[] preHashMod;
             public byte[] txproof;
             public byte[] blockHeader;
+            public byte[] txBytes;
+            public ulong[] txBytesLong;
         }
 
         [Serializable]
@@ -115,6 +117,7 @@ namespace smartBNB
                     8 bigint[] preshashmod
                     9 byte[] txproof
                     10 byte[] blockHeader
+                    11 byte[] txBytes
                     
                     for point mul
                     0 byte[] collatid
@@ -196,6 +199,11 @@ namespace smartBNB
                     Storage.Put("r", r?"6true":"6false");
                     return r;
                 }
+                else if (operation=="challenge 7"){
+                    bool r = ChallengeTxData((byte[])args[0], (byte[])args[1]);
+                    Storage.Put("r", r?"7true":"7false");
+                    return r;
+                }
                 else if (operation=="proofIsSaved")
                     return proofIsSaved((byte[])args[0], (byte[])args[1]);
                 else if (operation=="activateChallenge")
@@ -262,7 +270,7 @@ namespace smartBNB
     	{
     		if (Runtime.CheckWitness((byte[])args[0]))//args: collatid
     		{
-    		    if (args.Length==11)
+    		    if (args.Length==13)
                     return saveStateToStorage(STG_GENERAL, args);
     		    else if (args.Length == 5)
     		        return saveStateToStorage(STG_POINTMUL, args);
@@ -1062,6 +1070,14 @@ namespace smartBNB
                 challengeVars.blockHeader = (byte[])args[10];
                 if (challengeVars.blockHeader.Length==0) return false;
                 
+                challengeVars.txBytes = (byte[])args[11];
+                if (challengeVars.txBytes.Length<3) return false;
+                
+                challengeVars.txBytesLong = (ulong[])args[12];
+                Storage.Put("d1", challengeVars.txBytesLong[0]);
+                Storage.Put("d2", challengeVars.txBytesLong.Length);
+                if (challengeVars.txBytesLong.Length==0) return false;
+                
                 byte[] stg_key = callerAddr.Concat(txHash);
                 Storage.Put(stg_key, ObjectToBytes(challengeVars));
                 return true;
@@ -1484,11 +1500,13 @@ namespace smartBNB
         
     	private static Output decodeOutput(ulong[] bz, int ini, int len)
         {
+            Storage.Put("ini", ini);
+            Storage.Put("len", len);
             Output o = new Output();
             int[] ini_fin = new int[2];
             ini_fin[0] = ini;
             ini_fin[1] = ini+len-1;
-            
+
             //decode struct
             ini_fin = DecodeByteSlice(bz, ini_fin);
             if (ini_fin[0] == ini_fin[1])
@@ -1512,7 +1530,6 @@ namespace smartBNB
                 address[i] = b;
             }
             o.addr = address;
-
             //slide till coins
             ini_fin[0] = add_ini_fin[1]+1;
             ini_fin[1] = bz.Length-1;
@@ -1545,22 +1562,55 @@ namespace smartBNB
         }
         
         //TODO control unexpected faults + get from storage txbytes, outputstart and outputlen
-        private static bool ChallengeTxData(ulong[] collatId, ulong[] txbytes, int outputStart, int outputLen)
+        private static bool ChallengeTxData(byte[] collatId, byte[] txHash)
         {
-            Output o = new Output();
-            o.addr = new byte[20];
-            o = decodeOutput(txbytes, outputStart, outputLen);
+            GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
+            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            if (o==null) return false;
+            challengeVars = (GeneralChallengeVariables)o;
             
+            ulong[] txlongs = challengeVars.txBytesLong;
+            byte[] txb = challengeVars.txBytes;
+
+            ulong v = 0;
+            int start = (int)txb[0];
+            ulong actual = 0;
+            ulong res;
+            int len = (int)txb[1];
+            for (int i = 0; i<txlongs.Length;i++)
+            {
+                v = (ulong)txb[start+i];
+                actual = txlongs[i];
+                res = actual^v;
+                if(res!=0x00ff){
+                    return false;
+                }
+            }
+            
+            Output output = new Output();
+            output = decodeOutput(txlongs, 0, txlongs.Length);
+            
+            Storage.Put("amount", output.amount);
+            
+            /*byte[] bytestx = new byte[198];
+            byte bt;
+            for (int i = 2; i<200;i++)
+            {
+                bt = (byte)txb[i];
+                bytestx[i]=bt;
+            }*/
+            Storage.Put("prehash", txb);
+            Storage.Put("hash", getLeafHashByTxBytes(txb));
+
             //GET FROM STORAGE AMOUNT, BNBADDR
             BigInteger amount = 50000000;//get from storage
             byte[] bnbaddr = {210, 70, 25, 113, 160, 90, 159, 247, 12, 180, 104, 194, 51, 29, 152, 47, 90, 15, 172, 236};//get from storage
-            
             for (int i=0; i<20; i++)
             {
-                if (o.addr[i]!=bnbaddr[i]) return false;
+                if (output.addr[i]!=bnbaddr[i]) return false;
             }
             
-            return (amount == o.amount && o.denom == "BNB");
+            return (amount == output.amount && output.denom == "BNB");
         }
         
     }

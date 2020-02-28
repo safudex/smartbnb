@@ -6,7 +6,7 @@ var scriptHash = "05966f89303289902c28c39492ba30b75c1867b2" //const
 const cmdArgs = process.argv.slice(2)
 const node = "https://node"+randomInt(1, 3)+".neocompiler.io"
 const api = new Neon.api.neoCli.instance(node);
-const txHash = "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6"
+const txHash = cmdArgs[1]
 
 async function getTxResult(txid, leftAttemps){
     let txres = await axios.post(node, { jsonrpc: "2.0", id: 5, method: "getapplicationlog", params: [txid] })
@@ -105,9 +105,17 @@ async function SaveState(){
 		pushParams(neonJSParams, 'Hex', cmdArgs[9]);
 		//10 byte[] blockHeader
 		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
+		//11 byte[] txbytes
+		console.log("___________________", cmdArgs[11])
+		var t = cmdArgs[11].split(",").map(Neon.sc.ContractParam.integer)
+	console.log(t)
+		pushParams(neonJSParams, 'Hex', cmdArgs[11]);
+		//12 byte[] txLong
+		var tl = cmdArgs[12].split(",").map(Neon.sc.ContractParam.integer)
+		pushParams(neonJSParams, 'Array', tl);
 
         await invokeOperation("savestate", neonJSParams, 50, 10)
-
+return false
         //state pointmul sb
 		//12 bigint[][] Qs_sb
 		//13 bigint[] ss_sb
@@ -299,6 +307,17 @@ function ActivateChallenge(){
 
     invokeOperation("activateChallenge", neonJSParams, 50, 10)
 }
+function Challenge7(){
+    var neonJSParams = [];
+
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+
+    invokeOperation("challenge 7", neonJSParams, 150, 10)
+}
+
 function VerifyTxOutput(){
     var neonJSParams = [];
 var tx = [216, 1, 240, 98, 93, 238, 10, 76, 42, 44, 135, 250, 10, 34, 10, 20, 128, 235, 113, 44, 199, 136, 156, 221, 198, 42, 67, 190, 33, 134, 58, 181, 169, 92, 237, 173, 18, 10, 10, 3, 66, 78, 66, 16, 128, 225, 235, 23, 18, 34, 10, 20, 210, 70, 25, 113, 160, 90, 159, 247, 12, 180, 104, 194, 51, 29, 152, 47, 90, 15, 172, 236, 18, 10, 10, 3, 66, 78, 66, 16, 128, 225, 235, 23, 18, 112, 10, 38, 235, 90, 233, 135, 33, 3, 67, 169, 180, 183, 13, 156, 59, 217, 155, 188, 133, 225, 125, 2, 42, 73, 159, 171, 57, 13, 26, 83, 254, 126, 192, 134, 226, 40, 115, 10, 144, 200, 18, 64, 114, 173, 138, 139, 201, 232, 144, 246, 126, 203, 107, 21, 157, 27, 184, 35, 244, 240, 138, 253, 28, 155, 245, 194, 52, 178, 14, 130, 47, 66, 84, 46, 115, 150, 19, 225, 2, 38, 237, 86, 164, 138, 15, 31, 223, 138, 203, 31, 72, 206, 1, 231, 41, 197, 143, 67, 129, 246, 147, 239, 40, 144, 121, 29, 24, 188, 153, 9, 32, 12, 26, 16, 52, 55, 55, 57, 52, 57, 54, 54, 51, 54, 53, 57, 53, 51, 51, 54, 32, 1]
@@ -311,21 +330,21 @@ tx = tx.map(Neon.sc.ContractParam.integer)
 console.log("len", tx.length)
 pushParams(neonJSParams, 'Array', tx)
 pushParams(neonJSParams, 'Integer', 49)
-pushParams(neonJSParams, 'Integer', 35)
+pushParams(neonJSParams, 'Integer', 50)
 
     //0 byte[] calleraddr
 //    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
 //    pushParams(neonJSParams, 'Hex', txHash);
 
-    invokeOperation("", neonJSParams, 50, 10)
+    invokeOperation("", neonJSParams, 100, 10)
 
 }
 
-scriptHash = "3fe3a10fb642920282ce48f3e8eec47155b9cfbf"
+scriptHash = "55c217b481943dda0ca09662be6e5b363ef4e36b"
 
 //SaveState()
-//Challenge2()
+Challenge7()
 //IsSaved()
 //RemoveStorage()
-VerifyTxOutput();
+//VerifyTxOutput();
