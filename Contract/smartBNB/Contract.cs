@@ -269,7 +269,7 @@ namespace smartBNB
     	{
     		if (Runtime.CheckWitness((byte[])args[0]))//args: collatid
     		{
-    		    if (args.Length==13)
+    		    if (args.Length==12)
                     return saveStateToStorage(STG_GENERAL, args);
     		    else if (args.Length == 5)
     		        return saveStateToStorage(STG_POINTMUL, args);
