@@ -32,7 +32,6 @@ namespace smartBNB
             public byte[] txproof;
             public byte[] blockHeader;
             public ulong[] txBytes;
-            public ulong[] txBytesLong;
         }
 
         [Serializable]
@@ -1073,11 +1072,6 @@ namespace smartBNB
                 challengeVars.txBytes = (ulong[])args[11];
                 if (challengeVars.txBytes.Length<3) return false;
                 
-                challengeVars.txBytesLong = (ulong[])args[12];
-                Storage.Put("d1", challengeVars.txBytesLong[0]);
-                Storage.Put("d2", challengeVars.txBytesLong.Length);
-                if (challengeVars.txBytesLong.Length==0) return false;
-                
                 byte[] stg_key = callerAddr.Concat(txHash);
                 Storage.Put(stg_key, ObjectToBytes(challengeVars));
                 return true;
@@ -1572,6 +1566,8 @@ namespace smartBNB
 
             int start = (int)txb[0];
             int len = (int)txb[1];
+            
+            if (start<0 || len < txb.Length-2) return false;
 
             Output output = new Output();
             output = decodeOutput(txb, start, start+len);
