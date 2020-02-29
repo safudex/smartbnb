@@ -183,7 +183,7 @@ namespace smartBNB
                     0 byte[] collatid
                     1 byte[] txid
                     2 int signature index*/
-                    bool r = ChallengeInitialChecks((byte[])args[0], (byte[])args[1], (int)args[2], byteP.AsBigInteger());
+                    bool r = ChallengeInitialChecks((byte[])args[0], (int)args[1], byteP.AsBigInteger());
                     Storage.Put("r", r?"0true":"0false");
                     return r;
                 }
@@ -193,7 +193,7 @@ namespace smartBNB
                     0 byte[] collatid
                     1 byte[] txid
                     2 int signature index*/
-                    bool r = ChallengeCheckBytesV2((byte[])args[0], (byte[])args[1], (int)args[2], pubks[(int)args[2]]);
+                    bool r = ChallengeCheckBytesV2((byte[])args[0], (int)args[1], pubks[(int)args[1]]);
                     Storage.Put("r", r?"1true":"1false");
                     return r;
                 }
@@ -203,7 +203,7 @@ namespace smartBNB
                     0 byte[] collatid
                     1 byte[] txid
                     2 int signature index*/
-                    bool r = ChallengeSha512((byte[])args[0], (byte[])args[1], (int)args[2]);
+                    bool r = ChallengeSha512((byte[])args[0], (int)args[1]);
                     Storage.Put("r", r?"2true":"2false");
                     return r;
                 }
@@ -213,7 +213,7 @@ namespace smartBNB
                     0 byte[] collatid
                     1 byte[] txid
                     2 int signature index*/
-                    bool r = ChallengeSha512ModQ((byte[])args[0], (byte[])args[1], (int)args[2]);
+                    bool r = ChallengeSha512ModQ((byte[])args[0], (int)args[1]);
                     Storage.Put("r", r?"3true":"3false");
                     return r;
                 }
@@ -223,7 +223,7 @@ namespace smartBNB
                     0 byte[] collatid
                     1 byte[] txid
                     2 int signature index*/
-                    bool r = ChallengePointEqual((byte[])args[0], (byte[])args[1], (int)args[2], byteP.AsBigInteger(), byteD.AsBigInteger());
+                    bool r = ChallengePointEqual((byte[])args[0], (int)args[1], byteP.AsBigInteger(), byteD.AsBigInteger());
                     Storage.Put("r", r?"4true":"4false");
                     return r;
                 }
@@ -234,7 +234,7 @@ namespace smartBNB
                     2 int signature index
                     3 int step num
                     4 string mulid*/
-                    bool r = ChallengeEdDSA_PointMul_Setp((byte[])args[0], (byte[])args[1], (int)args[2], (int)args[3], (string)args[4], pubksDecompressed, byteP.AsBigInteger(), byteD.AsBigInteger());
+                    bool r = ChallengeEdDSA_PointMul_Setp((byte[])args[0], (int)args[1], (int)args[2], (string)args[3], pubksDecompressed, byteP.AsBigInteger(), byteD.AsBigInteger());
                     Storage.Put("r", r?"5true":"5false");
                     return r;
                 }
@@ -242,28 +242,24 @@ namespace smartBNB
                     /* ARGS
                     0 byte[] collatid
                     1 byte[] txid*/
-                    bool r = ChallengeTxProof((byte[])args[0], (byte[])args[1]);
+                    bool r = ChallengeTxProof((byte[])args[0]);
                     Storage.Put("r", r?"6true":"6false");
                     return r;
                 }
                 else if (operation=="challenge 7"){
-                    bool r = ChallengeTxData((byte[])args[0], (byte[])args[1]);
+                    bool r = ChallengeTxData((byte[])args[0]);
                     Storage.Put("r", r?"7true":"7false");
                     return r;
                 }
                 else if (operation=="proofIsSaved")
-                    return proofIsSaved((byte[])args[0], (byte[])args[1]);
-                else if (operation=="activateChallenge")
-                    return activateChallenge((byte[])args[0], (byte[])args[1]);
-                else if (operation=="removeStorage")//only for debug!!
-                    return removeStorage((byte[])args[0], (byte[])args[1]);
+                    return proofIsSaved((byte[])args[0]);
                 else
                     return false;
             }
             return true;
         }
 
-	public static object getCollatById(byte[] collatID)
+	    public static object getCollatById(byte[] collatID)
         {
             byte[] collat = Storage.Get(collatID);
             if (collat.Length == 0) return null;
@@ -385,8 +381,9 @@ namespace smartBNB
             return collat.BNCAddress;
         }
         
-        public static bool AckDepositByUser(byte[] collatAddr, byte[] portingContractID)
+        public static bool AckDepositByUser(byte[] portingContractID)
         {
+            byte[] collatAddr = portingContractID.Range(0, 32);
             if (Runtime.CheckWitness(collatAddr))
             {
                 PortingContract pc = new PortingContract();
@@ -475,8 +472,9 @@ namespace smartBNB
 	        return true;
         }
         
-        public static bool RequestWithdraw(byte[] userAddr, byte[] portingContractID)
+        public static bool RequestWithdraw(byte[] portingContractID)
         {
+            byte[] userAddr = portingContractID.Range(32, 32);
     		if (Runtime.CheckWitness(userAddr))
     		{
                 PortingContract pc = new PortingContract();
@@ -551,9 +549,6 @@ namespace smartBNB
     	                }
     	            }
     	        }
-    	        
-    	       
-    	        
 	        }
 	        
 	        byte[][] pcids = new byte[nUnlocked][];
@@ -573,15 +568,32 @@ namespace smartBNB
 	        return true;
         }
         
-        private static bool proofIsSaved(byte[] collatId, byte[] txHash)
+        private static bool proofIsSaved(byte[] portingContractID)
         {
-            byte[] s = collatId.Concat(txHash);
+            PortingContract pc = new PortingContract();
+		    Object p = getCollatById(portingContractID);
+		    if(p==null) return false;
+	        pc = (PortingContract)p;
+	        
+	        byte[] addrAllowed;
+	        if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEWITHDRAW)
+	        {
+                addrAllowed=portingContractID.Range(0, 32);
+                portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEWITHDRAW});
+	        }
+            else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
+            {
+	            addrAllowed=portingContractID.Range(32, 32);
+                portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEDEPOSIT});
+            }
+	        else
+	            return false;
 
             string[] ss = {"", "Ps_ha0", "Ps_ha1", "ss_ha0", "ss_ha1", "Qs_ha0", "Qs_ha1", "Ps_sb0", "Ps_sb1", "ss_sb0", "Qs_sb0", "ss_sb1", "Qs_sb1"};
             byte[][] ids = new byte[ss.Length][];
             for (int i = 0; i < ids.Length; i++)
             {
-                ids[i] = s.Concat(ss[i].AsByteArray());
+                ids[i] = portingContractID.Concat(ss[i].AsByteArray());
             }
             
             for (int i = 0; i < ids.Length; i++)
@@ -596,42 +608,35 @@ namespace smartBNB
             return true;
         }
         
-        private static bool activateChallenge(byte[] collatId, byte[] txHash)
-        {
-            byte[] s = collatId.Concat(txHash);
-
-            Storage.Put(s, 0x1);
-            return true;
-        }
-        
-        private static bool removeStorage(byte[] collatId, byte[] txHash)
-        {
-            byte[] s = collatId.Concat(txHash);
-
-            string[] ss = {"", "Ps_ha0", "Ps_ha1", "ss_ha0", "ss_ha1", "Qs_ha0", "Qs_ha1", "Ps_sb0", "Ps_sb1", "ss_sb0", "Qs_sb0", "ss_sb1", "Qs_sb1"};
-            byte[][] ids = new byte[ss.Length][];
-            for (int i = 0; i < ids.Length; i++)
-            {
-                ids[i] = s.Concat(ss[i].AsByteArray());
-            }
-            
-            for (int i = 0; i < ids.Length; i++)
-            {
-                Storage.Put(ids[i], 0);
-            }
-            Storage.Put("removed", "true");
-            return true;
-        }
-
     	private static bool SaveChallengeState(params object[] args)
     	{
+    	    byte[] portingContractID = (byte[])args[0];
     	    
-    		if (Runtime.CheckWitness((byte[])args[0]))//args: collatid
+            PortingContract pc = new PortingContract();
+		    Object p = getCollatById(portingContractID);
+		    if(p==null) return false;
+	        pc = (PortingContract)p;
+	        
+	        byte[] addrAllowed;
+	        if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEWITHDRAW)
+	        {
+                addrAllowed=portingContractID.Range(0, 32);
+                portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEWITHDRAW});
+	        }
+            else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
+            {
+	            addrAllowed=portingContractID.Range(32, 32);
+                portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEDEPOSIT});
+            }
+	        else
+	            return false;
+	            
+    		if (Runtime.CheckWitness(addrAllowed))
     		{
-    		    if (args.Length==12)
-                    return saveStateToStorage(STG_GENERAL, args);
-    		    else if (args.Length == 5)
-    		        return saveStateToStorage(STG_POINTMUL, args);
+    		    if (args.Length==11)
+                    return saveStateToStorage(STG_GENERAL, portingContractID, args);
+    		    else if (args.Length == 4)
+    		        return saveStateToStorage(STG_POINTMUL, portingContractID, args);
     		}
     		return false;
     	}
@@ -1382,73 +1387,73 @@ namespace smartBNB
             return Helper.Serialize(obj);
         }
         
-	    private static Object getStateFromStorage(byte state, byte[] collatId, byte[] txHash, params object[] args)
+	    private static Object getStateFromStorage(byte state, byte[] stg_key, params object[] args)
         {
-            byte[] stg_key = collatId.Concat(txHash);
-
             if (state == STG_POINTMUL)
-                stg_key = stg_key.Concat(((string)args[0]).AsByteArray());//collatid+txhash+pointmulid
+            {
+                byte[] pointMulID = ((string)args[0]).AsByteArray();
+                stg_key = stg_key.Concat(pointMulID);
+            }
 
             byte[] stg = Storage.Get(stg_key);
             if (stg.Length == 0) return null;
             return BytesToObject(stg);
         }
         
-        private static bool saveStateToStorage(byte state, params object[] args)
+        private static bool saveStateToStorage(byte state, byte[] stg_key, params object[] args)
         {
-            byte[] callerAddr = (byte[])args[0];
-            byte[] txHash = (byte[])args[1];
             if(state == STG_GENERAL)
             {
                 GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-                challengeVars.signature = (byte[][])args[2];
+                challengeVars.signature = (byte[][])args[1];
                 if (challengeVars.signature.Length!=8) return false;
                 
-                challengeVars.xs = (BigInteger[])args[3];
+                challengeVars.xs = (BigInteger[])args[2];
                 if (challengeVars.xs.Length!=8) return false;
                 
-                challengeVars.ys = (BigInteger[])args[4];
+                challengeVars.ys = (BigInteger[])args[3];
                 if (challengeVars.ys.Length!=8) return false;
                 
-                challengeVars.signableBytes = (byte[][])args[5];
+                challengeVars.signableBytes = (byte[][])args[4];
                 if (challengeVars.signableBytes.Length!=8) return false;
                 
-                challengeVars.pre = (ulong[][])args[6];
+                challengeVars.pre = (ulong[][])args[5];
                 if (challengeVars.pre.Length!=8) return false;
                 
-                challengeVars.preHash = (ulong[][])args[7];
+                challengeVars.preHash = (ulong[][])args[6];
                 if (challengeVars.preHash.Length!=8) return false;
                 
-                challengeVars.preHashMod = (BigInteger[])args[8];
+                challengeVars.preHashMod = (BigInteger[])args[7];
                 if (challengeVars.preHashMod.Length!=8) return false;
                 
-                challengeVars.txproof = (byte[])args[9];
+                challengeVars.txproof = (byte[])args[8];
                 if (challengeVars.txproof.Length==0) return false;
                 
-                challengeVars.blockHeader = (byte[])args[10];
+                challengeVars.blockHeader = (byte[])args[9];
                 if (challengeVars.blockHeader.Length==0) return false;
                 
-                challengeVars.txBytes = (ulong[])args[11];
+                challengeVars.txBytes = (ulong[])args[10];
                 if (challengeVars.txBytes.Length<3) return false;
                 
-                byte[] stg_key = callerAddr.Concat(txHash);
                 Storage.Put(stg_key, ObjectToBytes(challengeVars));
                 return true;
             }
             else if(state == STG_POINTMUL)
             {
-                byte[] stg_key = callerAddr.Concat(txHash).Concat(((string)args[3]).AsByteArray());//callerAddr+TxHash+pointmulId
+                byte[] pointMulID = ((string)args[2]).AsByteArray();
+                stg_key = stg_key.Concat(pointMulID);
                 
-                if((string)args[2]=="simple")
+                string type = (string)args[1];
+                if(type=="simple")
                 {
-                    BigInteger[] data = (BigInteger[])args[4];
+                    BigInteger[] data = (BigInteger[])args[3];
                     if (data.Length != slicesLen) return false;
                     
                     Storage.Put(stg_key, ObjectToBytes(data));
                 }
                 else
                 {
-                    BigInteger[][] data = (BigInteger[][])args[4];
+                    BigInteger[][] data = (BigInteger[][])args[3];
                     if (data.Length != slicesLen) return false;
                     
                     for (int i=0; i< data.Length; i++)
@@ -1462,10 +1467,10 @@ namespace smartBNB
             return false;
         }
    
-        private static bool ChallengeInitialChecks(byte[] collatId, byte[] txHash, int sigIndex, BigInteger p)
+        private static bool ChallengeInitialChecks(byte[] portingContractID, int sigIndex, BigInteger p)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             
@@ -1501,10 +1506,10 @@ namespace smartBNB
             //if return false; -> throw new Exception("Hash not contained in signableBytes");
         }
         
-        private static bool ChallengeCheckBytesV2(byte[] collatId, byte[] txHash, int sigIndex, byte[] pubK)
+        private static bool ChallengeCheckBytesV2(byte[] portingContractID, int sigIndex, byte[] pubK)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             
@@ -1522,10 +1527,10 @@ namespace smartBNB
         }
         
         //deprecated
-	    private static bool ChallengeCheckBytes(byte[] collatId, byte[] txHash, int sigIndex, byte[] pubK)
+	    private static bool ChallengeCheckBytes(byte[] portingContractID, int sigIndex, byte[] pubK)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             
@@ -1538,10 +1543,10 @@ namespace smartBNB
             return checkBytes(pre, hashableBytes, 1, (int)pre[pre.Length-1]);
         }
         
-        private static bool ChallengeSha512(byte[] collatId, byte[] txHash, int sigIndex)
+        private static bool ChallengeSha512(byte[] portingContractID, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             
@@ -1562,10 +1567,10 @@ namespace smartBNB
             return false;
         }
         
-        private static bool ChallengeSha512ModQ(byte[] collatId, byte[] txHash, int sigIndex)
+        private static bool ChallengeSha512ModQ(byte[] portingContractID, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             
@@ -1577,7 +1582,7 @@ namespace smartBNB
             return (expectedMod==mod);
         }
         
-        private static bool ChallengePointEqual(byte[] collatId, byte[] txHash, int sigIndex, BigInteger p, BigInteger d)
+        private static bool ChallengePointEqual(byte[] portingContractID, int sigIndex, BigInteger p, BigInteger d)
         {
             int iint = 31;
             int istep = (sigIndex*32+iint)%slicesLen;
@@ -1585,19 +1590,19 @@ namespace smartBNB
             string bs_sb = "sb"+((BigInteger)(iarr+48)).AsByteArray().AsString();
             string bs_ha = "ha"+((BigInteger)(iarr+48)).AsByteArray().AsString();
             string Qbs = "Qs_"+bs_sb;
-            BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
+            BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
             
             /*Object o = getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
             if (o==null) return false;
             BigInteger[][] Qssb = (BigInteger[][])o;*/
             
             Qbs = "Qs_"+bs_ha;
-            BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
+            BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
             BigInteger[] sB = Qssb[istep];
             BigInteger[] hA = Qsha[istep];
 
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
@@ -1609,18 +1614,18 @@ namespace smartBNB
             return point_equal(sB, EdDSA_PointAdd(R, hA, p, d), p);
         }
 
-	    private static bool ChallengeEdDSA_PointMul_Setp(byte[] collatId, byte[] txHash, int sigIndex, int i, string mulid, byte[][] pubksDecompressed, BigInteger p, BigInteger d)
+	    private static bool ChallengeEdDSA_PointMul_Setp(byte[] portingContractID, int sigIndex, int i, string mulid, byte[][] pubksDecompressed, BigInteger p, BigInteger d)
         {
             int istep = (sigIndex*32+i-1)%slicesLen;//array index, negativeValue%value does not work in vm so its ok here
             int iarr = (i+sigIndex*32)/slicesLen;
             string bs = mulid+((BigInteger)(iarr+48)).AsByteArray().AsString();
 
             string Pbs = "Ps_"+bs;
-            BigInteger[][] Ps = (BigInteger[][])getStateFromStorage(STG_POINTMUL, collatId, txHash, Pbs);
+            BigInteger[][] Ps = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Pbs);
             string Qbs = "Qs_"+bs;
-            BigInteger[][] Qs = (BigInteger[][])getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
+            BigInteger[][] Qs = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
             string sbs = "ss_"+bs;
-            BigInteger[] ss = (BigInteger[])getStateFromStorage(STG_POINTMUL, collatId, txHash, sbs);
+            BigInteger[] ss = (BigInteger[])getStateFromStorage(STG_POINTMUL, portingContractID, sbs);
 
             PointMulStep initialStep = new PointMulStep();
             PointMulStep expectedStep = new PointMulStep();
@@ -1628,7 +1633,7 @@ namespace smartBNB
             if (modPositive(istep,32)-32==-1)
             {
                 GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-                Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+                Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
                 if (o==null) return false;
                 challengeVars = (GeneralChallengeVariables)o;
                 
@@ -1694,10 +1699,10 @@ namespace smartBNB
                 return false;
         }
         
-        private static bool ChallengeTxProof(byte[] collatId, byte[] txHash)
+        private static bool ChallengeTxProof(byte[] portingContractID)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
@@ -1915,10 +1920,10 @@ namespace smartBNB
         }
         
         //TODO control unexpected faults + get from storage txbytes, outputstart and outputlen
-        private static bool ChallengeTxData(byte[] collatId, byte[] txHash)
+        private static bool ChallengeTxData(byte[] portingContractID)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, collatId, txHash, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             ulong[] txb = challengeVars.txBytes;
