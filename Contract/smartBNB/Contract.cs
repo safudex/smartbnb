@@ -390,7 +390,7 @@ namespace smartBNB
             if (Runtime.CheckWitness(collatAddr))
             {
                 PortingContract pc = new PortingContract();
-    		    Object p = getCollatById(portingContractID);
+    		    Object p = getPortingContract(portingContractID);
     		    if(p==null) return false;
 		        pc = (PortingContract)p;
 		        
@@ -434,7 +434,7 @@ namespace smartBNB
         public static bool ChallengeDeposit(byte[] fisherAddr, byte[] portingContractID)
         {
             PortingContract pc = new PortingContract();
-		    Object p = getCollatById(portingContractID);
+		    Object p = getPortingContract(portingContractID);
 		    if(p==null) return false;
 	        pc = (PortingContract)p;
 	        
@@ -456,7 +456,7 @@ namespace smartBNB
         public static bool ChallengeWithdraw(byte[] fisherAddr, byte[] portingContractID)
         {
             PortingContract pc = new PortingContract();
-		    Object p = getCollatById(portingContractID);
+		    Object p = getPortingContract(portingContractID);
 		    if(p==null) return false;
 	        pc = (PortingContract)p;
 	        
@@ -480,7 +480,7 @@ namespace smartBNB
     		if (Runtime.CheckWitness(userAddr))
     		{
                 PortingContract pc = new PortingContract();
-    		    Object p = getCollatById(portingContractID);
+    		    Object p = getPortingContract(portingContractID);
     		    if(p==null) return false;
     	        pc = (PortingContract)p;
     	        
@@ -516,7 +516,7 @@ namespace smartBNB
 	        for (int i = 0; i<collat.PContractIDs.Length;i++)
 	        {
 	            portingContractID = collat.PContractIDs[i];
-	            p = getCollatById(portingContractID);
+	            p = getPortingContract(portingContractID);
     		    if(p==null) return false;
     	        pc = (PortingContract)p;
     	        if (pc.ContractStatus == CONTRACT_STATUS_WITHDRAWREQUESTED)
@@ -625,6 +625,7 @@ namespace smartBNB
 
     	private static bool SaveChallengeState(params object[] args)
     	{
+    	    
     		if (Runtime.CheckWitness((byte[])args[0]))//args: collatid
     		{
     		    if (args.Length==12)
