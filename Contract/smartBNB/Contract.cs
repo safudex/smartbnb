@@ -8,6 +8,25 @@ namespace smartBNB
 {
     public class Contract : SmartContract
     {
+	private static readonly byte CONTRACT_STATUS_PORTREQUEST = 0x01;//WAITING FOR THE USER TO SEND BNB
+        private static readonly byte CONTRACT_STATUS_DEPOSITOK = 0x02;
+        private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED = 0x03;
+        private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT = 0x04;//CHALLENGE ACTIVATED
+        private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW = 0x05;//CHALLENGE ACTIVATED
+
+        private static readonly BigInteger CONTRACT_TIMEOUT_PORTREQUEST = 60*60*12;
+        private static readonly BigInteger CONTRACT_TIMEOUT_UPLOADPROOF = 60*60*12;
+        private static readonly BigInteger CONTRACT_TIMEOUT_WITHDRAWREQUEST = 60*60*12;
+        private static readonly BigInteger WINDOW_CHALLENGE= 60*60*12;
+
+        private static readonly BigInteger DEPOSIT_CHALLENGE = 130;
+
+        private static readonly BigInteger FACTOR_COLLATERAL = 2;
+        private static readonly BigInteger FACTOR_PORTREQUEST = 1;
+
+        private static readonly byte OPERATION_ADD = 0x06;//WAITING FOR THE USER TO SEND BNB
+        private static readonly byte OPERATION_SUB = 0x07;//CHALLENGE ACTIVATED
+
         private static readonly byte[] leafPrefix = { 0x00 };
         private static readonly byte[] innerPrefix = { 0x01 };
         private static readonly int slicesLen = 128;
@@ -18,6 +37,35 @@ namespace smartBNB
         private static readonly byte[] byteP =  {0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
         
     	private static readonly	byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
+
+	[Serializable]
+        public struct PortingContract
+        {
+            public byte ContractStatus;
+            public byte[] CollatBCNAddr;
+            public byte[] CollatAddr;
+            public byte[] UserAddr;
+            public BigInteger AmountBNB;
+            public BigInteger LastTimestamp;
+        }
+        
+        [Serializable]
+        public struct Collat
+        {
+            public byte[] Address;
+            public byte[] BNCAddress;
+            //public BigInteger CollateralAmount;
+            public BigInteger CollateralAmountLeft;
+            public AmountFrozen[] amountFrozen;
+            public byte[][] PContractIDs;
+        }
+        
+        public struct AmountFrozen
+        {
+            public byte[] userAddr;
+            public BigInteger Amount;
+            public BigInteger Timestamp;
+        }
 
         [Serializable]
         struct GeneralChallengeVariables
@@ -213,6 +261,316 @@ namespace smartBNB
                     return false;
             }
             return true;
+        }
+
+	public static object getCollatById(byte[] collatID)
+        {
+            byte[] collat = Storage.Get(collatID);
+            if (collat.Length == 0) return null;
+            return BytesToObject(collat);
+        }
+        
+        public static bool putCollatById(byte[] collatID, Collat collat)
+        {
+            Storage.Put(collatID, ObjectToBytes(collat));
+            return true;
+        }
+        
+        public static object getPortingContract(byte[] portingContractID)
+        {
+            byte[] pc = Storage.Get(portingContractID);
+            if (pc.Length == 0) return null;
+            return BytesToObject(pc);
+        }
+        
+        public static bool putPortingContract(byte[] portingContractID, PortingContract portingContract)
+        {
+            Storage.Put(portingContractID, ObjectToBytes(portingContract));
+            return true;
+        }
+        
+        public static bool RegisterAsCollateral(byte[] address, byte[] BNCAddress, BigInteger newAmount, byte operation)
+        {
+    		if (Runtime.CheckWitness(address))
+    		{
+    		    if (BNCAddress.Length!=20) return false;
+    		    if (newAmount<0) return false;
+    		    
+    		    byte[] collatID = address.Concat(BNCAddress);
+    		    Collat collat = new Collat();
+    		    Object c = getCollatById(collatID);
+
+    		    if (c == null)
+    		    {
+    		        //OBTENER NEWAMOUNT DEL COLLAT NEP5
+        		    collat.Address = address;
+        		    collat.BNCAddress = BNCAddress;
+        		    //collat.CollateralAmount = newAmount;
+        		    collat.CollateralAmountLeft = newAmount;
+        		    collat.amountFrozen = new AmountFrozen[0];
+        		    return putCollatById(collatID, collat);
+    		    }
+    		    else
+    		    {
+    		        collat = (Collat)c;
+    		        if(operation==OPERATION_ADD)
+                    {
+                        //OBTENER NEWAMOUNT DEL COLLAT NEP5
+                        //collat.CollateralAmount = collat.CollateralAmount+newAmount;
+        		        collat.CollateralAmountLeft = collat.CollateralAmountLeft+newAmount;;
+        		        return putCollatById(collatID, collat);
+                    }
+                    else if(operation==OPERATION_SUB)
+                    {   
+                        if(newAmount>collat.CollateralAmountLeft) return false;
+                        //DEVOLVER NEWAMOUNT AL COLLAT NEP5
+                        //collat.CollateralAmount = collat.CollateralAmount - newAmount;
+        		        collat.CollateralAmountLeft = collat.CollateralAmountLeft - newAmount;
+        		        return putCollatById(collatID, collat);
+                    }
+    		    }
+    		}
+    		return false;
+        }
+        
+        public static BigInteger getCollateralByAmount(BigInteger amount)
+        {
+            return amount*FACTOR_COLLATERAL;
+        }
+        
+        public static byte[] RequestNewPorting(byte[] collatID, byte[] userAddr, BigInteger Amount)
+        {
+            //SHOULD WE CHECK WITNESS(userAddr)?
+            Collat collat = new Collat();
+		    Object c = getCollatById(collatID);
+		    if(c==null) return new byte[0];
+		    
+		    collat = (Collat)c;
+		    
+		    BigInteger collateralAmountNedeed = getCollateralByAmount(Amount) + DEPOSIT_CHALLENGE;
+		    
+		    if(collat.CollateralAmountLeft<collateralAmountNedeed+DEPOSIT_CHALLENGE) return new byte[0];
+		    
+		    BigInteger timestamp = Runtime.Time;
+		    
+		    //OBTENER AMOUNT*FACTOR_REQUESTPORTING DE USERADDR NEP5
+		    
+		    collat.CollateralAmountLeft = collat.CollateralAmountLeft - collateralAmountNedeed;
+		    
+            AmountFrozen[] amountFrozen = new AmountFrozen[collat.amountFrozen.Length+1];
+            for (int i = 0; i<collat.amountFrozen.Length; i++)
+            {
+                amountFrozen[i] = collat.amountFrozen[i];
+            }
+            
+            AmountFrozen af = new AmountFrozen();
+            af.userAddr=userAddr;
+            af.Amount=Amount;
+            af.Timestamp=timestamp;
+            
+            amountFrozen[collat.amountFrozen.Length] = af;
+            collat.amountFrozen = amountFrozen;
+            
+		    putCollatById(collatID, collat);
+		    
+		    PortingContract pc = new PortingContract();
+            pc.ContractStatus = CONTRACT_STATUS_PORTREQUEST;
+            pc.CollatBCNAddr = collat.BNCAddress;
+            pc.UserAddr=userAddr;
+            pc.AmountBNB = Amount;
+            pc.LastTimestamp = timestamp;
+            
+            byte[] portingContractID = collatID.Concat(userAddr).Concat(timestamp.AsByteArray());
+            putPortingContract(portingContractID, pc);
+            return collat.BNCAddress;
+        }
+        
+        public static bool AckDepositByUser(byte[] collatAddr, byte[] portingContractID)
+        {
+            if (Runtime.CheckWitness(collatAddr))
+            {
+                PortingContract pc = new PortingContract();
+    		    Object p = getCollatById(portingContractID);
+    		    if(p==null) return false;
+		        pc = (PortingContract)p;
+		        
+		        if(pc.CollatAddr!=collatAddr || pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST || pc.ContractStatus==CONTRACT_STATUS_DEPOSITOK) return false;
+		        if(Runtime.Time-pc.LastTimestamp > CONTRACT_TIMEOUT_PORTREQUEST) return false;
+		        
+                Collat collat = new Collat();
+                byte[] collatID = pc.CollatAddr.Concat(pc.CollatBCNAddr);
+    		    Object c = getCollatById(collatID);
+    		    if(c==null) return false;
+		        collat = (Collat)c;
+		        if(collat.amountFrozen.Length<1) return false;
+		        
+		        AmountFrozen[] newAmountFrozen = new AmountFrozen[collat.amountFrozen.Length-1];
+		        AmountFrozen amfz;
+		        int j = 0;
+		        byte[] pcIDitem;
+                for (int i = 0; i<collat.amountFrozen.Length; i++)
+                {
+    		        amfz = collat.amountFrozen[i];
+                    pcIDitem = collatID.Concat(amfz.userAddr).Concat(pc.LastTimestamp.AsByteArray());
+                    if(portingContractID != pcIDitem)
+                    {
+                        newAmountFrozen[j] = collat.amountFrozen[i];
+                        j++;
+                    }
+                }
+                
+                collat.amountFrozen = newAmountFrozen;
+                
+		        pc.ContractStatus = CONTRACT_STATUS_DEPOSITOK;
+                pc.LastTimestamp = Runtime.Time;
+                putPortingContract(portingContractID, pc);
+		        putCollatById(collatID, collat);
+		        return true;
+            }
+            else
+                return false;
+        }
+        
+        public static bool ChallengeDeposit(byte[] fisherAddr, byte[] portingContractID)
+        {
+            PortingContract pc = new PortingContract();
+		    Object p = getCollatById(portingContractID);
+		    if(p==null) return false;
+	        pc = (PortingContract)p;
+	        
+	        if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST && pc.ContractStatus!=CONTRACT_STATUS_CHALLENGEDEPOSIT) return false;
+	        BigInteger t = Runtime.Time-pc.LastTimestamp;
+	        if(t < CONTRACT_TIMEOUT_PORTREQUEST || t > CONTRACT_TIMEOUT_PORTREQUEST + WINDOW_CHALLENGE) return false;
+	        
+	        if(pc.ContractStatus==CONTRACT_STATUS_PORTREQUEST)
+	        {
+    	        pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT;
+    	        pc.LastTimestamp = Runtime.Time;
+	        }
+	        
+	        //OBTENER DEPOSIT_CHALLENGE DEL FISHER NEP5
+	        
+	        return true;
+        }
+        
+        public static bool ChallengeWithdraw(byte[] fisherAddr, byte[] portingContractID)
+        {
+            PortingContract pc = new PortingContract();
+		    Object p = getCollatById(portingContractID);
+		    if(p==null) return false;
+	        pc = (PortingContract)p;
+	        
+	        if(pc.ContractStatus!=CONTRACT_STATUS_WITHDRAWREQUESTED && pc.ContractStatus!=CONTRACT_STATUS_CHALLENGEWITHDRAW) return false;
+	        BigInteger t= Runtime.Time-pc.LastTimestamp;
+	        if(t < CONTRACT_TIMEOUT_WITHDRAWREQUEST || t > CONTRACT_TIMEOUT_WITHDRAWREQUEST + WINDOW_CHALLENGE) return false;
+	        
+	        if(pc.ContractStatus==CONTRACT_STATUS_WITHDRAWREQUESTED)
+	        {
+    	        pc.ContractStatus = CONTRACT_STATUS_CHALLENGEWITHDRAW;
+    	        pc.LastTimestamp = Runtime.Time;
+	        }
+
+	        //OBTENER DEPOSIT_CHALLENGE DEL FISHER NEP5
+	        
+	        return true;
+        }
+        
+        public static bool RequestWithdraw(byte[] userAddr, byte[] portingContractID)
+        {
+    		if (Runtime.CheckWitness(userAddr))
+    		{
+                PortingContract pc = new PortingContract();
+    		    Object p = getCollatById(portingContractID);
+    		    if(p==null) return false;
+    	        pc = (PortingContract)p;
+    	        
+    	        if(pc.ContractStatus!=CONTRACT_STATUS_DEPOSITOK) return false;
+    	        if(userAddr!=pc.UserAddr) return false;
+    	        
+    	        pc.ContractStatus = CONTRACT_STATUS_WITHDRAWREQUESTED;
+    	        pc.LastTimestamp = Runtime.Time;
+    
+    	        //QUEMAR SBNB NEP5
+    	        
+    	        return true;
+    		}
+    		return false;
+        }
+        
+        public static bool UnlockCollateral(byte[] collatID)
+        {
+            Collat collat = new Collat();
+		    Object c = getCollatById(collatID);
+		    if(c==null) return false;
+	        collat = (Collat)c;
+	        
+	        AmountFrozen[] tempAmountFrozen = new AmountFrozen[collat.amountFrozen.Length];
+	        AmountFrozen amfz;
+	        int nFrozen = 0;
+	        byte[] pcIDitem;
+	        PortingContract pc = new PortingContract();
+		    Object p;
+	        byte[] portingContractID;
+	        int nUnlocked = 0;
+	        byte[][] tempids = new byte[collat.PContractIDs.Length][];
+	        for (int i = 0; i<collat.PContractIDs.Length;i++)
+	        {
+	            portingContractID = collat.PContractIDs[i];
+	            p = getCollatById(portingContractID);
+    		    if(p==null) return false;
+    	        pc = (PortingContract)p;
+    	        if (pc.ContractStatus == CONTRACT_STATUS_WITHDRAWREQUESTED)
+    	        {
+        	        BigInteger t = Runtime.Time - pc.LastTimestamp;
+        	        if (t > CONTRACT_TIMEOUT_WITHDRAWREQUEST + WINDOW_CHALLENGE)
+        	        {
+            	        tempids[nUnlocked]=portingContractID;
+            	        nUnlocked++;
+            	        collat.CollateralAmountLeft = collat.CollateralAmountLeft + pc.AmountBNB;
+        	        }
+    	        }
+    	        else if (pc.ContractStatus == CONTRACT_STATUS_PORTREQUEST)
+    	        {
+    	            BigInteger t;
+    	            for (int j = 0; j<collat.amountFrozen.Length; j++)
+    	            {
+	                    amfz = collat.amountFrozen[j];
+    	                pcIDitem = collatID.Concat(amfz.userAddr).Concat(pc.LastTimestamp.AsByteArray());
+    	                if(portingContractID==pcIDitem)
+    	                {
+    	                    t = amfz.Timestamp;
+    	                    if (t > CONTRACT_TIMEOUT_PORTREQUEST + WINDOW_CHALLENGE)
+                            {
+                                collat.CollateralAmountLeft = collat.CollateralAmountLeft + pc.AmountBNB;
+                            }
+                            else
+                            {
+                                tempAmountFrozen[nFrozen] = collat.amountFrozen[j];
+                                nFrozen++;
+                            }
+    	                }
+    	            }
+    	        }
+    	        
+    	       
+    	        
+	        }
+	        
+	        byte[][] pcids = new byte[nUnlocked][];
+            for (int i = 0; i<nUnlocked; i++)
+            {
+                pcids[i] = tempids[i];
+            }
+            collat.PContractIDs = pcids;
+            
+            AmountFrozen[] newAmountFrozen = new AmountFrozen[nFrozen];
+            for (int i = 0; i<nFrozen; i++)
+            {
+                newAmountFrozen[i]=tempAmountFrozen[i];
+            }
+            collat.amountFrozen = newAmountFrozen;
+	        
+	        return true;
         }
         
         private static bool proofIsSaved(byte[] collatId, byte[] txHash)
