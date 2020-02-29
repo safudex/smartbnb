@@ -109,7 +109,7 @@ async function SaveState(){
 		console.log("___________________", cmdArgs[11])
 		var t = cmdArgs[11].split(",").map(Neon.sc.ContractParam.integer)
 	console.log(t)
-		pushParams(neonJSParams, 'Hex', cmdArgs[11]);
+		pushParams(neonJSParams, 'Array', t);
 		//12 byte[] txLong
 		var tl = cmdArgs[12].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', tl);
@@ -341,7 +341,7 @@ pushParams(neonJSParams, 'Integer', 50)
 
 }
 
-scriptHash = "55c217b481943dda0ca09662be6e5b363ef4e36b"
+scriptHash = "a67d696618d6aad8bd823c2c2942e7ccaf85438d"
 
 //SaveState()
 Challenge7()

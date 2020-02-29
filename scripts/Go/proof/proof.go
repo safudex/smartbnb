@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"io"
 	"os"
-	"fmt"
 )
 
 var cdc = types.NewCodec()
@@ -148,8 +147,7 @@ func Invoke(spv SPV) string {
 	spv.PresHashMod,
 	spv.TxProof,
 	spv.Header,
-	spv.TxBytes,
-	spv.txLong).CombinedOutput()
+	spv.TxBytes).CombinedOutput()
 	if err != nil {
 		panic(err)
 	}
@@ -172,7 +170,6 @@ type SPV struct {
 	MulStepsSB string
 	MulStepsHA string
 	TxBytes string
-	txLong string
 }
 
 func GetProof(txHash string) SPV {
@@ -186,24 +183,11 @@ func GetProof(txHash string) SPV {
 	restx, _ := client.Tx(bytesTxHash, true)
 
 	txbytes := restx.Proof.Data
-	fmt.Println("txbytes", txbytes)
-	fmt.Println("s")
-	start, l, bz := getOutputStart(txbytes)
+	start, l := getOutputStart(txbytes)
     paqtx := make([]byte, 0)
     paqtx = append(paqtx, []byte{byte(start)}...)//Warning: assuming txProofIndex always < byteSize
     paqtx = append(paqtx, []byte{byte(l)}...)//Warning: assuming txProofIndex always < byteSize
     paqtx = append(paqtx, txbytes...)
-fmt.Println(txHash, "____________________________________paqtx[0]_", len(bz))
-fmt.Println(start, paqtx[0])
-fmt.Println(l, paqtx[1])
-fmt.Println("____________________________________paqtx[0]_")
-	strtxl:=""
-	for i := 0; i < len(bz); i++ {
-		strtxl+=strconv.Itoa(int(bz[i]))
-		if i<len(bz)-1{
-			strtxl+=","
-		}
-	}
 	strtx:=""
 	for i := 0; i < len(paqtx); i++ {
 		strtx+=strconv.Itoa(int(paqtx[i]))
@@ -212,9 +196,8 @@ fmt.Println("____________________________________paqtx[0]_")
 		}
 	}
 
-	fmt.Println("s", strtxl, ",")
-	spv.txLong = strtxl
-	spv.TxBytes = hex.EncodeToString(paqtx)
+	spv.TxBytes = strtx//hex.EncodeToString(paqtx)
+
 	//tx block
 	txBlockHeight := int64(restx.Height)
 	//proof
@@ -426,7 +409,7 @@ func DecodeUvarint(bz []byte) (u uint64, n int) {
 	return
 }
 
-func getOutputStart(bz []byte) (start int, length int, bzi []byte) {
+func getOutputStart(bz []byte) (start int, length int) {
 	_, n := binary.Uvarint(bz)
 	bz = bz[n:]
 	start += n
@@ -487,6 +470,5 @@ func getOutputStart(bz []byte) (start int, length int, bzi []byte) {
 	bz = bz[n:]
 	start += n*/
 	length = len(bz)
-	bzi = bz
 	return
 }
