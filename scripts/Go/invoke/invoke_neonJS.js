@@ -6,7 +6,7 @@ var scriptHash = "05966f89303289902c28c39492ba30b75c1867b2" //const
 const cmdArgs = process.argv.slice(2)
 const node = "https://node"+randomInt(1, 3)+".neocompiler.io"
 const api = new Neon.api.neoCli.instance(node);
-const txHash = "87E98C672940790460055F807B0AE76C8A88826D542EB1107B6713FB102D2BC6"
+const txHash = cmdArgs[1]
 
 async function getTxResult(txid, leftAttemps){
     let txres = await axios.post(node, { jsonrpc: "2.0", id: 5, method: "getapplicationlog", params: [txid] })
@@ -105,10 +105,14 @@ async function SaveState(){
 		pushParams(neonJSParams, 'Hex', cmdArgs[9]);
 		//10 byte[] blockHeader
 		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
+		//11 byte[] txbytes
+		console.log("___________________", cmdArgs[11])
+		var t = cmdArgs[11].split(",").map(Neon.sc.ContractParam.integer)
+		pushParams(neonJSParams, 'Array', t);
 
         await invokeOperation("savestate", neonJSParams, 50, 10)
 
-        //state pointmul sb
+		//state pointmul sb
 		//12 bigint[][] Qs_sb
 		//13 bigint[] ss_sb
 		//14 bigint[][] Ps_sb
@@ -299,10 +303,21 @@ function ActivateChallenge(){
 
     invokeOperation("activateChallenge", neonJSParams, 50, 10)
 }
+function Challenge7(){
+    var neonJSParams = [];
 
-scriptHash = "05966f89303289902c28c39492ba30b75c1867b2"
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+
+    invokeOperation("challenge 7", neonJSParams, 150, 10)
+}
+
+scriptHash = "06fb138f4b4680da4d3fc2fe5d71390f5c0ad9aa"
 
 SaveState()
-//Challenge2()
+//Challenge7()
 //IsSaved()
 //RemoveStorage()
+//VerifyTxOutput();
