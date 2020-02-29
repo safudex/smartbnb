@@ -13,19 +13,21 @@ namespace smartBNB
         private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED = 0x03;
         private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT = 0x04;//CHALLENGE ACTIVATED
         private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW = 0x05;//CHALLENGE ACTIVATED
+        private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT_FAILED = 0x06;
+        private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW_FAILED = 0x07;
 
-        private static readonly BigInteger CONTRACT_TIMEOUT_PORTREQUEST = 60*60*12;
-        private static readonly BigInteger CONTRACT_TIMEOUT_UPLOADPROOF = 60*60*12;
-        private static readonly BigInteger CONTRACT_TIMEOUT_WITHDRAWREQUEST = 60*60*12;
-        private static readonly BigInteger WINDOW_CHALLENGE= 60*60*12;
+        private static readonly BigInteger CONTRACT_TIMEOUT_PORTREQUEST = 0;//60*60*12;
+        private static readonly BigInteger CONTRACT_TIMEOUT_UPLOADPROOF = 0;//60*60*12;
+        private static readonly BigInteger CONTRACT_TIMEOUT_WITHDRAWREQUEST = 0;//60*60*12;
+        private static readonly BigInteger WINDOW_CHALLENGE= 0;//60*60*12;
 
         private static readonly BigInteger DEPOSIT_CHALLENGE = 130;
 
         private static readonly BigInteger FACTOR_COLLATERAL = 2;
         private static readonly BigInteger FACTOR_PORTREQUEST = 1;
 
-        private static readonly byte OPERATION_ADD = 0x06;//WAITING FOR THE USER TO SEND BNB
-        private static readonly byte OPERATION_SUB = 0x07;//CHALLENGE ACTIVATED
+        private static readonly byte OPERATION_ADD = 0x01;//WAITING FOR THE USER TO SEND BNB
+        private static readonly byte OPERATION_SUB = 0x02;//CHALLENGE ACTIVATED
 
         private static readonly byte[] leafPrefix = { 0x00 };
         private static readonly byte[] innerPrefix = { 0x01 };
@@ -38,7 +40,7 @@ namespace smartBNB
         
     	private static readonly	byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
 
-	[Serializable]
+	    [Serializable]
         public struct PortingContract
         {
             public byte ContractStatus;
@@ -153,18 +155,17 @@ namespace smartBNB
                 {
                 	/* ARGS
                 	for general state:
-                    0 byte[] collatid
-                    1 byte[] txid
-                    2 byte[][] signatures
-                    3 bigint[] xs (decompressed signature x)
-                    4 bigint[] ys (decompressed signature y)
-                    5 byte[][] signablebytes
-                    6 ulong[][] pres
-                    7 ulong[][] preshash
-                    8 bigint[] preshashmod
-                    9 byte[] txproof
-                    10 byte[] blockHeader
-                    11 byte[] txBytes
+                    0 byte[] portingContractID
+                    1 byte[][] signatures
+                    2 bigint[] xs (decompressed signature x)
+                    3 bigint[] ys (decompressed signature y)
+                    4 byte[][] signablebytes
+                    5 ulong[][] pres
+                    6 ulong[][] preshash
+                    7 bigint[] preshashmod
+                    8 byte[] txproof
+                    90 byte[] blockHeader
+                    01 byte[] txBytes
                     
                     for point mul
                     0 byte[] collatid
@@ -177,82 +178,53 @@ namespace smartBNB
                     Storage.Put("r", r?"strue":"sfalse");
                     return r;
                 }
-                else if(operation=="challenge 0")
+                else if (operation=="executeChallenge")
                 {
-                    /* ARGS
-                    0 byte[] collatid
-                    1 byte[] txid
-                    2 int signature index*/
-                    bool r = ChallengeInitialChecks((byte[])args[0], (int)args[1], byteP.AsBigInteger());
-                    Storage.Put("r", r?"0true":"0false");
+                    bool r = executeChallenge((byte[])args[0], (byte)args[1], (int)args[1], pubks, pubksDecompressed, args);
                     return r;
                 }
-                else if(operation=="challenge 1")
+                else if (operation=="registerAsCollateral")
                 {
-                    /* ARGS
-                    0 byte[] collatid
-                    1 byte[] txid
-                    2 int signature index*/
-                    bool r = ChallengeCheckBytesV2((byte[])args[0], (int)args[1], pubks[(int)args[1]]);
-                    Storage.Put("r", r?"1true":"1false");
+                    bool r = RegisterAsCollateral((byte[])args[0], (byte[])args[1], (BigInteger)args[2], (byte)args[3]);
+                    Storage.Put("r", r?"regcolltrue":"regcollfalse");
                     return r;
                 }
-                else if(operation=="challenge 2")
+                else if (operation=="newPorting")
                 {
-                    /* ARGS
-                    0 byte[] collatid
-                    1 byte[] txid
-                    2 int signature index*/
-                    bool r = ChallengeSha512((byte[])args[0], (int)args[1]);
-                    Storage.Put("r", r?"2true":"2false");
-                    return r;
+                    byte[] r = RequestNewPorting((byte[])args[0], (byte[])args[1], (BigInteger)args[2]);
+                    Storage.Put("r", r);
+                    return r.Length>0;
                 }
-                else if(operation=="challenge 3")
+                else if (operation=="ackDepositByUser")
                 {
-                    /* ARGS
-                    0 byte[] collatid
-                    1 byte[] txid
-                    2 int signature index*/
-                    bool r = ChallengeSha512ModQ((byte[])args[0], (int)args[1]);
-                    Storage.Put("r", r?"3true":"3false");
+                    bool r = AckDepositByUser((byte[])args[0]);
+                    Storage.Put("r", r?"acktrue":"ackfalse");
                     return r;
                 }
-                else if(operation=="challenge 4")
+                else if (operation=="challengedeposit")
                 {
-                    /* ARGS
-                    0 byte[] collatid
-                    1 byte[] txid
-                    2 int signature index*/
-                    bool r = ChallengePointEqual((byte[])args[0], (int)args[1], byteP.AsBigInteger(), byteD.AsBigInteger());
-                    Storage.Put("r", r?"4true":"4false");
+                    bool r = ChallengeDeposit((byte[])args[0]);
+                    Storage.Put("r", r?"acktrue":"ackfalse");
                     return r;
                 }
-                else if(operation=="challenge 5"){
-                    /* ARGS
-                    0 byte[] collatid
-                    1 byte[] txid
-                    2 int signature index
-                    3 int step num
-                    4 string mulid*/
-                    bool r = ChallengeEdDSA_PointMul_Setp((byte[])args[0], (int)args[1], (int)args[2], (string)args[3], pubksDecompressed, byteP.AsBigInteger(), byteD.AsBigInteger());
-                    Storage.Put("r", r?"5true":"5false");
+                else if (operation=="challengewithdraw")
+                {
+                    bool r = ChallengeWithdraw((byte[])args[0]);
+                    Storage.Put("r", r?"acktrue":"ackfalse");
                     return r;
                 }
-                else if(operation=="challenge 6"){
-                    /* ARGS
-                    0 byte[] collatid
-                    1 byte[] txid*/
-                    bool r = ChallengeTxProof((byte[])args[0]);
-                    Storage.Put("r", r?"6true":"6false");
+                else if (operation=="requestwithdraw")
+                {
+                    bool r = RequestWithdraw((byte[])args[0]);
+                    Storage.Put("r", r?"acktrue":"ackfalse");
                     return r;
                 }
-                else if (operation=="challenge 7"){
-                    bool r = ChallengeTxData((byte[])args[0]);
-                    Storage.Put("r", r?"7true":"7false");
+                else if (operation=="unlockcollateral")
+                {
+                    bool r = UnlockCollateral((byte[])args[0]);
+                    Storage.Put("r", r?"acktrue":"ackfalse");
                     return r;
                 }
-                else if (operation=="proofIsSaved")
-                    return proofIsSaved((byte[])args[0]);
                 else
                     return false;
             }
@@ -285,6 +257,110 @@ namespace smartBNB
             return true;
         }
         
+        public static bool executeChallenge(byte[] portingContractID, byte challengeNum, int sigNum, byte[][] pubks, byte[][] pubksDecompressed, params object[] args)
+        {
+            PortingContract pc = new PortingContract();
+		    Object p = getPortingContract(portingContractID);
+		    if(p==null) return false;
+	        pc = (PortingContract)p;
+	        
+	        if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEWITHDRAW)
+                portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEWITHDRAW});
+            else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
+                portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEDEPOSIT});
+            
+            bool challengeResult = true;
+            
+            if(challengeNum==0x1)
+            {
+                /* ARGS
+                0 byte[] collatid
+                1 byte[] txid
+                2 int signature index*/
+                challengeResult = ChallengeInitialChecks(portingContractID, sigNum, byteP.AsBigInteger());
+                Storage.Put("r", challengeResult?"0true":"0false");
+            }
+            else if(challengeNum==0x2)
+            {
+                /* ARGS
+                0 byte[] collatid
+                1 byte[] txid
+                2 int signature index*/
+                challengeResult = ChallengeCheckBytesV2(portingContractID, sigNum, pubks[sigNum]);
+                Storage.Put("r", challengeResult?"1true":"1false");
+            }
+            else if(challengeNum==0x3)
+            {
+                /* ARGS
+                0 byte[] collatid
+                1 byte[] txid
+                2 int signature index*/
+                challengeResult = ChallengeSha512(portingContractID, sigNum);
+                Storage.Put("r", challengeResult?"2true":"2false");
+            }
+            else if(challengeNum==0x4)
+            {
+                /* ARGS
+                0 byte[] collatid
+                1 byte[] txid
+                2 int signature index*/
+                challengeResult = ChallengeSha512ModQ(portingContractID, sigNum);
+                Storage.Put("r", challengeResult?"3true":"3false");
+            }
+            else if(challengeNum==0x5)
+            {
+                /* ARGS
+                0 byte[] collatid
+                1 byte[] txid
+                2 int signature index*/
+                challengeResult = ChallengePointEqual(portingContractID, sigNum, byteP.AsBigInteger(), byteD.AsBigInteger());
+                Storage.Put("r", challengeResult?"4true":"4false");
+            }
+            else if(challengeNum==0x6){
+                /* ARGS
+                0 byte[] collatid
+                1 byte[] txid
+                2 int signature index
+                3 int step num
+                4 string mulid*/
+                challengeResult = ChallengeEdDSA_PointMul_Setp(portingContractID, sigNum, (int)args[2], (string)args[3], pubksDecompressed, byteP.AsBigInteger(), byteD.AsBigInteger());
+                Storage.Put("r", challengeResult?"5true":"5false");
+            }
+            else if(challengeNum==0x7){
+                /* ARGS
+                0 byte[] collatid
+                1 byte[] txid*/
+                challengeResult = ChallengeTxProof(portingContractID);
+                Storage.Put("r", challengeResult?"6true":"6false");
+            }
+            else if (challengeNum==0x8){
+                challengeResult = ChallengeTxData(portingContractID);
+                Storage.Put("r", challengeResult?"7true":"7false");
+            }
+            else if (challengeNum==0x9){
+                challengeResult = proofIsSaved(portingContractID);
+                Storage.Put("r", challengeResult?"8true":"8false");
+            }
+            
+            if (!challengeResult)
+            {
+                if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEWITHDRAW)
+    	        {
+    	            //EL COLLAT HA PERDIDO EL CHALLENGE, ENVIAR AL USUARIO NEP5
+                    pc.ContractStatus = CONTRACT_STATUS_CHALLENGEWITHDRAW_FAILED;
+                    return false;
+    	        }
+                else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
+                {
+                    //EL USUARIO HA PERDIDO EL CHALLENGE, ENVIAR NEP5 AL COLLAT NEP5
+                    pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT_FAILED;
+                    return false;
+                }
+            }
+	        
+            return challengeResult;
+        }
+        
         public static bool RegisterAsCollateral(byte[] address, byte[] BNCAddress, BigInteger newAmount, byte operation)
         {
     		if (Runtime.CheckWitness(address))
@@ -295,7 +371,7 @@ namespace smartBNB
     		    byte[] collatID = address.Concat(BNCAddress);
     		    Collat collat = new Collat();
     		    Object c = getCollatById(collatID);
-
+                Storage.Put("collatid", collatID);
     		    if (c == null)
     		    {
     		        //OBTENER NEWAMOUNT DEL COLLAT NEP5
@@ -344,11 +420,12 @@ namespace smartBNB
 		    collat = (Collat)c;
 		    
 		    BigInteger collateralAmountNedeed = getCollateralByAmount(Amount) + DEPOSIT_CHALLENGE;
-		    
-		    if(collat.CollateralAmountLeft<collateralAmountNedeed+DEPOSIT_CHALLENGE) return new byte[0];
+		    Storage.Put("amount", collat.CollateralAmountLeft);
+		    Storage.Put("amountn", collateralAmountNedeed);
+		    if(collat.CollateralAmountLeft<collateralAmountNedeed) return new byte[0];
 		    
 		    BigInteger timestamp = Runtime.Time;
-		    
+		    Storage.Put("debug", "1");
 		    //OBTENER AMOUNT*FACTOR_REQUESTPORTING DE USERADDR NEP5
 		    
 		    collat.CollateralAmountLeft = collat.CollateralAmountLeft - collateralAmountNedeed;
@@ -358,7 +435,7 @@ namespace smartBNB
             {
                 amountFrozen[i] = collat.amountFrozen[i];
             }
-            
+            Storage.Put("debug", "2");
             AmountFrozen af = new AmountFrozen();
             af.userAddr=userAddr;
             af.Amount=Amount;
@@ -371,38 +448,46 @@ namespace smartBNB
 		    
 		    PortingContract pc = new PortingContract();
             pc.ContractStatus = CONTRACT_STATUS_PORTREQUEST;
+            pc.CollatAddr = collatID.Range(0, 20);
             pc.CollatBCNAddr = collat.BNCAddress;
             pc.UserAddr=userAddr;
             pc.AmountBNB = Amount;
             pc.LastTimestamp = timestamp;
-            
+            Storage.Put("debug", "3");
             byte[] portingContractID = collatID.Concat(userAddr).Concat(timestamp.AsByteArray());
             putPortingContract(portingContractID, pc);
+            Storage.Put("debug", "4");
+            Storage.Put("portaddr", portingContractID);
+            Storage.Put("bncaddr", collat.BNCAddress);
             return collat.BNCAddress;
         }
         
         public static bool AckDepositByUser(byte[] portingContractID)
         {
-            byte[] collatAddr = portingContractID.Range(0, 32);
+            byte[] collatAddr = portingContractID.Range(0, 20);
+            Storage.Put("addr", collatAddr);
             if (Runtime.CheckWitness(collatAddr))
             {
+                Storage.Put("pcid", portingContractID);
                 PortingContract pc = new PortingContract();
     		    Object p = getPortingContract(portingContractID);
     		    if(p==null) return false;
 		        pc = (PortingContract)p;
-		        
-		        if(pc.CollatAddr!=collatAddr || pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST || pc.ContractStatus==CONTRACT_STATUS_DEPOSITOK) return false;
+		        Storage.Put("amountpc", "dd");
+		        if(pc.CollatAddr!=collatAddr || pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
 		        if(Runtime.Time-pc.LastTimestamp > CONTRACT_TIMEOUT_PORTREQUEST) return false;
-		        
+		        Storage.Put("debug", "1");
                 Collat collat = new Collat();
                 byte[] collatID = pc.CollatAddr.Concat(pc.CollatBCNAddr);
     		    Object c = getCollatById(collatID);
     		    if(c==null) return false;
 		        collat = (Collat)c;
+		        Storage.Put("debug", "2");
 		        if(collat.amountFrozen.Length<1) return false;
 		        
 		        AmountFrozen[] newAmountFrozen = new AmountFrozen[collat.amountFrozen.Length-1];
 		        AmountFrozen amfz;
+		        
 		        int j = 0;
 		        byte[] pcIDitem;
                 for (int i = 0; i<collat.amountFrozen.Length; i++)
@@ -415,7 +500,7 @@ namespace smartBNB
                         j++;
                     }
                 }
-                
+                Storage.Put("debug", "3");
                 collat.amountFrozen = newAmountFrozen;
                 
 		        pc.ContractStatus = CONTRACT_STATUS_DEPOSITOK;
@@ -428,17 +513,19 @@ namespace smartBNB
                 return false;
         }
         
-        public static bool ChallengeDeposit(byte[] fisherAddr, byte[] portingContractID)
+        public static bool ChallengeDeposit(byte[] portingContractID)
         {
+            Storage.Put("debug", portingContractID);
             PortingContract pc = new PortingContract();
 		    Object p = getPortingContract(portingContractID);
 		    if(p==null) return false;
 	        pc = (PortingContract)p;
-	        
-	        if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST && pc.ContractStatus!=CONTRACT_STATUS_CHALLENGEDEPOSIT) return false;
+	        Storage.Put("debug", "1");
+	        if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
+	        Storage.Put("debug","2");
 	        BigInteger t = Runtime.Time-pc.LastTimestamp;
 	        if(t < CONTRACT_TIMEOUT_PORTREQUEST || t > CONTRACT_TIMEOUT_PORTREQUEST + WINDOW_CHALLENGE) return false;
-	        
+	        Storage.Put("debug","3");
 	        if(pc.ContractStatus==CONTRACT_STATUS_PORTREQUEST)
 	        {
     	        pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT;
@@ -450,7 +537,7 @@ namespace smartBNB
 	        return true;
         }
         
-        public static bool ChallengeWithdraw(byte[] fisherAddr, byte[] portingContractID)
+        public static bool ChallengeWithdraw(byte[] portingContractID)
         {
             PortingContract pc = new PortingContract();
 		    Object p = getPortingContract(portingContractID);
@@ -474,17 +561,21 @@ namespace smartBNB
         
         public static bool RequestWithdraw(byte[] portingContractID)
         {
-            byte[] userAddr = portingContractID.Range(32, 32);
+            Storage.Put("debug", "1");
+            byte[] userAddr = portingContractID.Range(20, 20);
+            Storage.Put("debug", userAddr);
     		if (Runtime.CheckWitness(userAddr))
     		{
+    		    Storage.Put("debug", "3");
                 PortingContract pc = new PortingContract();
     		    Object p = getPortingContract(portingContractID);
     		    if(p==null) return false;
     	        pc = (PortingContract)p;
-    	        
+    	        Storage.Put("debug", "4");
     	        if(pc.ContractStatus!=CONTRACT_STATUS_DEPOSITOK) return false;
+    	        Storage.Put("debug", "5");
     	        if(userAddr!=pc.UserAddr) return false;
-    	        
+    	        Storage.Put("debug", "6");
     	        pc.ContractStatus = CONTRACT_STATUS_WITHDRAWREQUESTED;
     	        pc.LastTimestamp = Runtime.Time;
     
@@ -511,6 +602,7 @@ namespace smartBNB
 	        byte[] portingContractID;
 	        int nUnlocked = 0;
 	        byte[][] tempids = new byte[collat.PContractIDs.Length][];
+	        return true;
 	        for (int i = 0; i<collat.PContractIDs.Length;i++)
 	        {
 	            portingContractID = collat.PContractIDs[i];
@@ -522,25 +614,26 @@ namespace smartBNB
         	        BigInteger t = Runtime.Time - pc.LastTimestamp;
         	        if (t > CONTRACT_TIMEOUT_WITHDRAWREQUEST + WINDOW_CHALLENGE)
         	        {
-            	        tempids[nUnlocked]=portingContractID;
-            	        nUnlocked++;
             	        collat.CollateralAmountLeft = collat.CollateralAmountLeft + pc.AmountBNB;
+            	        continue;
         	        }
     	        }
     	        else if (pc.ContractStatus == CONTRACT_STATUS_PORTREQUEST)
     	        {
+    	            tempAmountFrozen = new AmountFrozen[collat.amountFrozen.Length];
     	            BigInteger t;
     	            for (int j = 0; j<collat.amountFrozen.Length; j++)
     	            {
 	                    amfz = collat.amountFrozen[j];
-    	                pcIDitem = collatID.Concat(amfz.userAddr).Concat(pc.LastTimestamp.AsByteArray());
+    	                pcIDitem = collatID.Concat(amfz.userAddr).Concat(amfz.Timestamp.AsByteArray());
     	                if(portingContractID==pcIDitem)
     	                {
     	                    t = amfz.Timestamp;
     	                    if (t > CONTRACT_TIMEOUT_PORTREQUEST + WINDOW_CHALLENGE)
-                            {
+    	                    {
                                 collat.CollateralAmountLeft = collat.CollateralAmountLeft + pc.AmountBNB;
-                            }
+                                continue;
+    	                    }
                             else
                             {
                                 tempAmountFrozen[nFrozen] = collat.amountFrozen[j];
@@ -549,6 +642,23 @@ namespace smartBNB
     	                }
     	            }
     	        }
+    	        else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEWITHDRAW || pc.ContractStatus == CONTRACT_STATUS_CHALLENGEDEPOSIT)
+    	        {
+    	            BigInteger t = Runtime.Time - pc.LastTimestamp;
+    	            if (t > CONTRACT_TIMEOUT_UPLOADPROOF+WINDOW_CHALLENGE)
+    	            {
+        	            collat.CollateralAmountLeft = collat.CollateralAmountLeft + pc.AmountBNB;
+        	            continue;
+    	            }
+    	        }
+    	        else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEDEPOSIT_FAILED)
+    	        {
+    	            collat.CollateralAmountLeft = collat.CollateralAmountLeft + pc.AmountBNB;
+    	            continue;
+    	        }
+    	        
+    	        tempids[nUnlocked]=portingContractID;
+    	        nUnlocked++;
 	        }
 	        
 	        byte[][] pcids = new byte[nUnlocked][];
@@ -578,12 +688,12 @@ namespace smartBNB
 	        byte[] addrAllowed;
 	        if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEWITHDRAW)
 	        {
-                addrAllowed=portingContractID.Range(0, 32);
+                addrAllowed=portingContractID.Range(0, 20);
                 portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEWITHDRAW});
 	        }
             else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
             {
-	            addrAllowed=portingContractID.Range(32, 32);
+	            addrAllowed=portingContractID.Range(40, 20);
                 portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEDEPOSIT});
             }
 	        else
@@ -620,12 +730,12 @@ namespace smartBNB
 	        byte[] addrAllowed;
 	        if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEWITHDRAW)
 	        {
-                addrAllowed=portingContractID.Range(0, 32);
+                addrAllowed=portingContractID.Range(0, 20);
                 portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEWITHDRAW});
 	        }
             else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
             {
-	            addrAllowed=portingContractID.Range(32, 32);
+	            addrAllowed=portingContractID.Range(20, 20);
                 portingContractID = portingContractID.Concat(new byte[]{CONTRACT_STATUS_CHALLENGEDEPOSIT});
             }
 	        else
