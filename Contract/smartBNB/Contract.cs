@@ -41,13 +41,14 @@ namespace smartBNB
 
         private static readonly byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
 
+        // Static call docs: https://docs.neo.org/docs/en-us/sc/deploy/invoke.html
         // General spec: https://docs.neo.org/tutorial/en-us/9-smartContract/cgas/1_what_is_cgas.html
         // Contract addresses: https://medium.com/neo-smart-economy/15-things-you-should-know-about-cneo-and-cgas-1029770d76e0
-        // https://github.com/neo-ngd/CNEO-Contract
-        // https://github.com/neo-ngd/CGAS-Contract
-        private static readonly byte[] CGAS = "AScKxyXmNtEnTLTvbVhNQyTJmgytxhwSnM".ToScriptHash();
-        private static readonly byte[] CNEO = "AQbg4gk1Q6FaGCtfEKu2ETSMP6U25YDVR3".ToScriptHash();
-        public delegate object NEP5Contract(string method, object[] args);
+        // Code: https://github.com/neo-ngd/CGAS-Contract
+        [Appcall("74f2dc36a68fdc4682034178eb2220729231db76")] // ScriptHash of CGAS (address: AScKxyXmNtEnTLTvbVhNQyTJmgytxhwSnM)
+        public static extern object CGAS(string method, object[] args);
+
+        private static readonly byte[] PriceOracle = "ALfnhLg7rUyL6Jr98bzzoxz5J7m64fbR4s".ToScriptHash(); // TODO: Update
 
         [DisplayName("deposited")]
         public static event Action<byte[], BigInteger> Deposited;
@@ -375,12 +376,11 @@ namespace smartBNB
             return challengeResult;
         }
 
-        private static void TransferNEP5(byte[] from, byte[] to, byte[] assetID, BigInteger amount)
+        private static void TransferCGAS(byte[] from, byte[] to, BigInteger amount)
         {
             // Transfer token
             var args = new object[] { from, to, amount };
-            var contract = (NEP5Contract)assetID.ToDelegate();
-            if (!(bool)contract("transfer", args)) throw new Exception("Failed to transfer NEP-5 tokens!");
+            if (!(bool)CGAS("transfer", args)) throw new Exception("Failed to transfer NEP-5 tokens!");
         }
 
         // Register a new collat or increase/decrease the deposit of an existing one
@@ -401,7 +401,7 @@ namespace smartBNB
                 collat.CollateralAmountLeft = newAmount;
                 collat.amountFrozen = new AmountFrozen[0];
                 putCollatById(collatID, collat);
-                TransferNEP5(address, ExecutionEngine.ExecutingScriptHash, CGAS, newAmount);
+                TransferCGAS(address, ExecutionEngine.ExecutingScriptHash, newAmount);
                 Deposited(address, newAmount);
             }
             else
@@ -411,7 +411,7 @@ namespace smartBNB
                 {
                     collat.CollateralAmountLeft = collat.CollateralAmountLeft+newAmount;;
                     putCollatById(collatID, collat);
-                    TransferNEP5(address, ExecutionEngine.ExecutingScriptHash, CGAS, newAmount);
+                    TransferCGAS(address, ExecutionEngine.ExecutingScriptHash, newAmount);
                     Deposited(address, newAmount);
                 }
                 else if(operation==OPERATION_SUB)
@@ -419,7 +419,7 @@ namespace smartBNB
                     if(newAmount>collat.CollateralAmountLeft) return false;
                     collat.CollateralAmountLeft = collat.CollateralAmountLeft - newAmount;
                     putCollatById(collatID, collat);
-                    TransferNEP5(ExecutionEngine.ExecutingScriptHash, address, CGAS, newAmount);
+                    TransferCGAS(ExecutionEngine.ExecutingScriptHash, address, newAmount);
                 }
             }
             return true;
