@@ -383,52 +383,46 @@ namespace smartBNB
 			if (!(bool)contract("transfer", args)) throw new Exception("Failed to transfer NEP-5 tokens!");
 		}
 
+        // Register a new collat or increase/decrease the deposit of an existing one
         public static bool RegisterAsCollateral(byte[] address, byte[] BNCAddress, BigInteger newAmount, byte operation)
         {
-    		if (Runtime.CheckWitness(address))
-    		{
-    		    if (BNCAddress.Length!=20) return false;
-    		    if (newAmount<1) return false;
-    		    
-    		    byte[] collatID = address.Concat(BNCAddress);
-    		    Collat collat = new Collat();
-    		    Object c = getCollatById(collatID);
-                Storage.Put("collatid", collatID);
-    		    if (c == null)
-    		    {
-    		        //OBTENER NEWAMOUNT DEL COLLAT NEP5
-        		    collat.Address = address;
-        		    collat.BNCAddress = BNCAddress;
-        		    collat.CollateralAmountLeft = newAmount;
-        		    collat.amountFrozen = new AmountFrozen[0];
-        		    putCollatById(collatID, collat);
-					TransferNEP5(address, ExecutionEngine.ExecutingScriptHash, CGAS, newAmount);
-					Deposited(address, newAmount);
-    		    }
-    		    else
-    		    {
-    		        collat = (Collat)c;
-    		        if(operation==OPERATION_ADD)
-                    {
-        		        collat.CollateralAmountLeft = collat.CollateralAmountLeft+newAmount;;
-        		        putCollatById(collatID, collat);
-						TransferNEP5(address, ExecutionEngine.ExecutingScriptHash, CGAS, newAmount);
-						Deposited(address, newAmount);
-                    }
-                    else if(operation==OPERATION_SUB)
-                    {   
-                        if(newAmount>collat.CollateralAmountLeft) return false;
-        		        collat.CollateralAmountLeft = collat.CollateralAmountLeft - newAmount;
-        		        putCollatById(collatID, collat);
-						TransferNEP5(ExecutionEngine.ExecutingScriptHash, address, CGAS, newAmount);
-                    }
-    		    }
-				return true;
-    		}
-			else
-			{
-    			return false;
-			}
+            if (!Runtime.CheckWitness(address)) return false;
+            if (BNCAddress.Length!=20) return false;
+            if (newAmount<1) return false;
+
+            byte[] collatID = address.Concat(BNCAddress);
+            Collat collat = new Collat();
+            Object c = getCollatById(collatID);
+            Storage.Put("collatid", collatID);
+            if (c == null)
+            {
+                collat.Address = address;
+                collat.BNCAddress = BNCAddress;
+                collat.CollateralAmountLeft = newAmount;
+                collat.amountFrozen = new AmountFrozen[0];
+                putCollatById(collatID, collat);
+                TransferNEP5(address, ExecutionEngine.ExecutingScriptHash, CGAS, newAmount);
+                Deposited(address, newAmount);
+            }
+            else
+            {
+                collat = (Collat)c;
+                if(operation==OPERATION_ADD)
+                {
+                    collat.CollateralAmountLeft = collat.CollateralAmountLeft+newAmount;;
+                    putCollatById(collatID, collat);
+                    TransferNEP5(address, ExecutionEngine.ExecutingScriptHash, CGAS, newAmount);
+                    Deposited(address, newAmount);
+                }
+                else if(operation==OPERATION_SUB)
+                {   
+                    if(newAmount>collat.CollateralAmountLeft) return false;
+                    collat.CollateralAmountLeft = collat.CollateralAmountLeft - newAmount;
+                    putCollatById(collatID, collat);
+                    TransferNEP5(ExecutionEngine.ExecutingScriptHash, address, CGAS, newAmount);
+                }
+            }
+            return true;
         }
         
         public static BigInteger getCollateralByAmount(BigInteger amount)
