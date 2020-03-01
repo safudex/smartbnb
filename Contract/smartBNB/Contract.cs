@@ -480,28 +480,22 @@ namespace smartBNB
         public static bool AckDepositByUser(byte[] portingContractID)
         {
             byte[] collatAddr = portingContractID.Range(0, 20);
+            if (!Runtime.CheckWitness(collatAddr)) return false;
 
-            if (Runtime.CheckWitness(collatAddr))
-            {
-                PortingContract pc = new PortingContract();
-                Object p = getPortingContract(portingContractID);
-                if(p==null) return false;
-                pc = (PortingContract)p;
-                if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
-                if((Runtime.Time-pc.LastTimestamp) > CONTRACT_TIMEOUT_PORTREQUEST) return false;
+            PortingContract pc = new PortingContract();
+            Object p = getPortingContract(portingContractID);
+            if(p==null) return false;
+            pc = (PortingContract)p;
+            if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
+            if((Runtime.Time-pc.LastTimestamp) > CONTRACT_TIMEOUT_PORTREQUEST) return false;
 
-                pc.ContractStatus = CONTRACT_STATUS_DEPOSITOK;
-                pc.LastTimestamp = Runtime.Time;
-                
-                putPortingContract(portingContractID, pc);
+            pc.ContractStatus = CONTRACT_STATUS_DEPOSITOK;
+            pc.LastTimestamp = Runtime.Time;
 
-                TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, DEPOSIT_CHALLENGE); // TODO: FIX
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            putPortingContract(portingContractID, pc);
+
+            TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, DEPOSIT_CHALLENGE); // TODO: FIX
+            return true;
         }
 
         public static bool ChallengeDeposit(byte[] portingContractID)
