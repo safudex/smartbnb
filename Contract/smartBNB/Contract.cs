@@ -8,7 +8,7 @@ namespace smartBNB
 {
     public class Contract : SmartContract
     {
-	private static readonly byte CONTRACT_STATUS_PORTREQUEST = 0x01;//WAITING FOR THE USER TO SEND BNB
+		private static readonly byte CONTRACT_STATUS_PORTREQUEST = 0x01;//WAITING FOR THE USER TO SEND BNB
         private static readonly byte CONTRACT_STATUS_DEPOSITOK = 0x02;
         private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED = 0x03;
         private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT = 0x04;//CHALLENGE ACTIVATED
@@ -29,6 +29,7 @@ namespace smartBNB
         private static readonly byte OPERATION_ADD = 0x01;//WAITING FOR THE USER TO SEND BNB
         private static readonly byte OPERATION_SUB = 0x02;//CHALLENGE ACTIVATED
 
+		// See https://docs.tendermint.com/master/spec/blockchain/encoding.html#merkle-trees
         private static readonly byte[] leafPrefix = { 0x00 };
         private static readonly byte[] innerPrefix = { 0x01 };
         private static readonly int slicesLen = 128;
@@ -39,6 +40,17 @@ namespace smartBNB
         private static readonly byte[] byteP =  {0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
         
     	private static readonly	byte[] byteD = {0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75, 0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00, 0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c, 0x73, 0xfe, 0x6f, 0x2b, 0xee, 0x6c, 0x03, 0x52};
+
+		// General spec: https://docs.neo.org/tutorial/en-us/9-smartContract/cgas/1_what_is_cgas.html
+		// Contract addresses: https://medium.com/neo-smart-economy/15-things-you-should-know-about-cneo-and-cgas-1029770d76e0
+		// https://github.com/neo-ngd/CNEO-Contract
+		// https://github.com/neo-ngd/CGAS-Contract
+		private static readonly byte[] CGAS = "AScKxyXmNtEnTLTvbVhNQyTJmgytxhwSnM".ToScriptHash();
+		private static readonly byte[] CNEO = "AQbg4gk1Q6FaGCtfEKu2ETSMP6U25YDVR3".ToScriptHash();
+		public delegate object NEP5Contract(string method, object[] args);
+
+		[DisplayName("deposited")]
+		public static event Action<byte[], BigInteger> Deposited;
 
 	    [Serializable]
         public struct PortingContract
@@ -56,7 +68,6 @@ namespace smartBNB
         {
             public byte[] Address;
             public byte[] BNCAddress;
-            //public BigInteger CollateralAmount;
             public BigInteger CollateralAmountLeft;
             public AmountFrozen[] amountFrozen;
             public byte[][] PContractIDs;
@@ -227,8 +238,11 @@ namespace smartBNB
                 }
                 else
                     return false;
-            }
-            return true;
+            } else {
+				// Someone is trying to spend NEO or GAS that have been sent to the contract
+				// This should never happen, must have been user error 
+            	return true; // Allow anyone to spend it
+			}
         }
 
 	    public static object getCollatById(byte[] collatID)
@@ -360,13 +374,21 @@ namespace smartBNB
 	        
             return challengeResult;
         }
-        
+
+		private static void TransferNEP5(byte[] from, byte[] to, byte[] assetID, BigInteger amount)
+		{
+			// Transfer token
+			var args = new object[] { from, to, amount };
+			var contract = (NEP5Contract)assetID.ToDelegate();
+			if (!(bool)contract("transfer", args)) throw new Exception("Failed to transfer NEP-5 tokens!");
+		}
+
         public static bool RegisterAsCollateral(byte[] address, byte[] BNCAddress, BigInteger newAmount, byte operation)
         {
     		if (Runtime.CheckWitness(address))
     		{
     		    if (BNCAddress.Length!=20) return false;
-    		    if (newAmount<0) return false;
+    		    if (newAmount<1) return false;
     		    
     		    byte[] collatID = address.Concat(BNCAddress);
     		    Collat collat = new Collat();
@@ -377,32 +399,36 @@ namespace smartBNB
     		        //OBTENER NEWAMOUNT DEL COLLAT NEP5
         		    collat.Address = address;
         		    collat.BNCAddress = BNCAddress;
-        		    //collat.CollateralAmount = newAmount;
         		    collat.CollateralAmountLeft = newAmount;
         		    collat.amountFrozen = new AmountFrozen[0];
-        		    return putCollatById(collatID, collat);
+        		    putCollatById(collatID, collat);
+					TransferNEP5(address, ExecutionEngine.ExecutingScriptHash, CGAS, newAmount);
+					Deposited(address, newAmount);
     		    }
     		    else
     		    {
     		        collat = (Collat)c;
     		        if(operation==OPERATION_ADD)
                     {
-                        //OBTENER NEWAMOUNT DEL COLLAT NEP5
-                        //collat.CollateralAmount = collat.CollateralAmount+newAmount;
         		        collat.CollateralAmountLeft = collat.CollateralAmountLeft+newAmount;;
-        		        return putCollatById(collatID, collat);
+        		        putCollatById(collatID, collat);
+						TransferNEP5(address, ExecutionEngine.ExecutingScriptHash, CGAS, newAmount);
+						Deposited(address, newAmount);
                     }
                     else if(operation==OPERATION_SUB)
                     {   
                         if(newAmount>collat.CollateralAmountLeft) return false;
-                        //DEVOLVER NEWAMOUNT AL COLLAT NEP5
-                        //collat.CollateralAmount = collat.CollateralAmount - newAmount;
         		        collat.CollateralAmountLeft = collat.CollateralAmountLeft - newAmount;
-        		        return putCollatById(collatID, collat);
+        		        putCollatById(collatID, collat);
+						TransferNEP5(ExecutionEngine.ExecutingScriptHash, address, CGAS, newAmount);
                     }
     		    }
+				return true;
     		}
-    		return false;
+			else
+			{
+    			return false;
+			}
         }
         
         public static BigInteger getCollateralByAmount(BigInteger amount)
