@@ -307,7 +307,7 @@ function RegisterAsCollateral(){
     var bncaddr = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     pushParams(neonJSParams, 'Hex', bncaddr);
     pushParams(neonJSParams, 'Integer', 300)
-    pushParams(neonJSParams, 'Integer', 6)
+    pushParams(neonJSParams, 'Integer', 1)
 
     invokeOperation("registerAsCollateral", neonJSParams, 50, 10)
 }
@@ -330,7 +330,6 @@ function ackUserDepositPorting(){
     //0 byte[] collatid 
     pushParams(neonJSParams, 'Hex', portingContractID);
     //1 byte[] portingContractID
-    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
 
     invokeOperation("ackDepositByUser", neonJSParams, 50, 10)
 }
@@ -394,8 +393,9 @@ function unlockCollateral(){
 }
 
 collatid = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-portingContractID = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa23ba2703c53263e8d6e522dc32203339dcd8eee9dde15a5e"
-scriptHash = "f70a8006ee7f5e4ee07ce92586d380d81bd2744e"
+portingContractID = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa23ba2703c53263e8d6e522dc32203339dcd8eee975c25b5e"
+
+scriptHash = "b18d4d9e6e9463f0d7edfbbcce474cce5f3edaed"
 console.log(ECO_WALLET._address)
 
 //RegisterAsCollateral()
@@ -403,9 +403,10 @@ console.log(ECO_WALLET._address)
 //ackUserDepositPorting()
 //unlockCollateral()
 //SaveState()
-requestWithdraw()
-//challengeDeposit()
+//requestWithdraw()
+challengeDeposit()
 //Challenge7()
 //IsSaved()
 //RemoveStorage()
 //VerifyTxOutput();
+//executeChallenge();
