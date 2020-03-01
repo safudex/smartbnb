@@ -514,24 +514,21 @@ namespace smartBNB
 
         public static bool ChallengeDeposit(byte[] portingContractID)
         {
-            Storage.Put("debug", portingContractID);
+            Storage.Put("debug", portingContractID); //DEBUG
             PortingContract pc = new PortingContract();
             Object p = getPortingContract(portingContractID);
             if(p==null) return false;
             pc = (PortingContract)p;
-            Storage.Put("debug", "1");
+            Storage.Put("debug", "1"); //DEBUG
             if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
-            Storage.Put("debug","2");
+            Storage.Put("debug","2"); //DEBUG
             BigInteger t = Runtime.Time-pc.LastTimestamp;
-            if(t < CONTRACT_TIMEOUT_PORTREQUEST || t > CONTRACT_TIMEOUT_PORTREQUEST + WINDOW_CHALLENGE) return false;
-            Storage.Put("debug","3");
-            if(pc.ContractStatus==CONTRACT_STATUS_PORTREQUEST)
-            {
-                pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT;
-                pc.LastTimestamp = Runtime.Time;
-            }
+            if(t < CONTRACT_TIMEOUT_PORTREQUEST || t > (CONTRACT_TIMEOUT_PORTREQUEST + WINDOW_CHALLENGE)) return false;
+            Storage.Put("debug","3"); //DEBUG
 
-            //OBTENER DEPOSIT_CHALLENGE DEL FISHER NEP5
+            if (!Runtime.CheckWitness(pc.UserAddr)) return false; // TODO: Enable fishermen to also create challenges
+            pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT;
+            pc.LastTimestamp = Runtime.Time;
 
             return true;
         }
