@@ -503,7 +503,7 @@ namespace smartBNB
                 pc.LastTimestamp = Runtime.Time;
                 putPortingContract(portingContractID, pc);
 
-                TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, DEPOSIT_CHALLENGE);
+                TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, DEPOSIT_CHALLENGE); // TODO: FIX
                 return true;
             }
             else
@@ -529,6 +529,8 @@ namespace smartBNB
             if (!Runtime.CheckWitness(pc.UserAddr)) return false; // TODO: Enable fishermen to also create challenges
             pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT;
             pc.LastTimestamp = Runtime.Time;
+            putPortingContract(portingContractID, pc);
+            TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
 
             return true;
         }
@@ -540,17 +542,15 @@ namespace smartBNB
             if(p==null) return false;
             pc = (PortingContract)p;
 
-            if(pc.ContractStatus!=CONTRACT_STATUS_WITHDRAWREQUESTED && pc.ContractStatus!=CONTRACT_STATUS_CHALLENGEWITHDRAW) return false;
             BigInteger t= Runtime.Time-pc.LastTimestamp;
             if(t < CONTRACT_TIMEOUT_WITHDRAWREQUEST || t > CONTRACT_TIMEOUT_WITHDRAWREQUEST + WINDOW_CHALLENGE) return false;
 
-            if(pc.ContractStatus==CONTRACT_STATUS_WITHDRAWREQUESTED)
-            {
-                pc.ContractStatus = CONTRACT_STATUS_CHALLENGEWITHDRAW;
-                pc.LastTimestamp = Runtime.Time;
-            }
-
-            //OBTENER DEPOSIT_CHALLENGE DEL FISHER NEP5
+            if(pc.ContractStatus!=CONTRACT_STATUS_WITHDRAWREQUESTED) return false;
+            if (!Runtime.CheckWitness(pc.UserAddr)) return false; // TODO: Enable fishermen to also create challenges
+            pc.ContractStatus = CONTRACT_STATUS_CHALLENGEWITHDRAW;
+            pc.LastTimestamp = Runtime.Time;
+            putPortingContract(portingContractID, pc);
+            TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
 
             return true;
         }
