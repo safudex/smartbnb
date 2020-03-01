@@ -16,6 +16,7 @@ namespace smartBNB
         private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT_FAILED = 0x06;
         private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW_FAILED = 0x07;
 
+        // TODO: Update these constants
         private static readonly BigInteger CONTRACT_TIMEOUT_PORTREQUEST = 0;//60*60*12;
         private static readonly BigInteger CONTRACT_TIMEOUT_UPLOADPROOF = 0;//60*60*12;
         private static readonly BigInteger CONTRACT_TIMEOUT_WITHDRAWREQUEST = 0;//60*60*12;
@@ -485,52 +486,30 @@ namespace smartBNB
         public static bool AckDepositByUser(byte[] portingContractID)
         {
             byte[] collatAddr = portingContractID.Range(0, 20);
-            Storage.Put("addr", collatAddr);
+            Storage.Put("addr", collatAddr); //DEBUG
             if (Runtime.CheckWitness(collatAddr))
             {
-                Storage.Put("pcid", portingContractID);
+                Storage.Put("pcid", portingContractID); //DEBUG
                 PortingContract pc = new PortingContract();
                 Object p = getPortingContract(portingContractID);
                 if(p==null) return false;
                 pc = (PortingContract)p;
-                Storage.Put("amountpc", "dd");
+                Storage.Put("amountpc", "dd"); //DEBUG
                 if(pc.CollatAddr!=collatAddr || pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
-                if(Runtime.Time-pc.LastTimestamp > CONTRACT_TIMEOUT_PORTREQUEST) return false;
-                Storage.Put("debug", "1");
-                Collat collat = new Collat();
-                byte[] collatID = pc.CollatAddr.Concat(pc.CollatBCNAddr);
-                Object c = getCollatById(collatID);
-                if(c==null) return false;
-                collat = (Collat)c;
-                Storage.Put("debug", "2");
-                if(collat.amountFrozen.Length<1) return false;
-
-                AmountFrozen[] newAmountFrozen = new AmountFrozen[collat.amountFrozen.Length-1];
-                AmountFrozen amfz;
-
-                int j = 0;
-                byte[] pcIDitem;
-                for (int i = 0; i<collat.amountFrozen.Length; i++)
-                {
-                    amfz = collat.amountFrozen[i];
-                    pcIDitem = collatID.Concat(amfz.userAddr).Concat(pc.LastTimestamp.AsByteArray());
-                    if(portingContractID != pcIDitem)
-                    {
-                        newAmountFrozen[j] = collat.amountFrozen[i];
-                        j++;
-                    }
-                }
-                Storage.Put("debug", "3");
-                collat.amountFrozen = newAmountFrozen;
+                if((Runtime.Time-pc.LastTimestamp) > CONTRACT_TIMEOUT_PORTREQUEST) return false;
+                Storage.Put("debug", "1"); //DEBUG
 
                 pc.ContractStatus = CONTRACT_STATUS_DEPOSITOK;
                 pc.LastTimestamp = Runtime.Time;
                 putPortingContract(portingContractID, pc);
-                putCollatById(collatID, collat);
+
+                TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, DEPOSIT_CHALLENGE);
                 return true;
             }
             else
+            {
                 return false;
+            }
         }
 
         public static bool ChallengeDeposit(byte[] portingContractID)
