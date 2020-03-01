@@ -2115,12 +2115,13 @@ namespace smartBNB
             return o;
         }
 
-        //TODO control unexpected faults + get from storage txbytes, outputstart and outputlen
+        //TODO control unexpected faults
         private static bool ChallengeTxData(byte[] portingContractID)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
             if (o==null) return false;
+
             challengeVars = (GeneralChallengeVariables)o;
             ulong[] txb = challengeVars.txBytes;
 
@@ -2132,9 +2133,7 @@ namespace smartBNB
             Output output = new Output();
             output = decodeOutput(txb, start, start+len);
 
-            Storage.Put("amount", output.amount);
-
-            byte[] bytestx = new byte[350];
+            byte[] bytestx = new byte[350];//TODO: DINAMIC LEN
             byte bt;
             for (int i = 0; i<txb.Length-2;i++)
             {
@@ -2142,9 +2141,15 @@ namespace smartBNB
                 bytestx[i]=bt;
             }
 
-            //GET FROM STORAGE AMOUNT, BNBADDR
-            BigInteger amount = 50000000;//get from storage
-            byte[] bnbaddr = {210, 70, 25, 113, 160, 90, 159, 247, 12, 180, 104, 194, 51, 29, 152, 47, 90, 15, 172, 236};//get from storage
+            PortingContract pc = new PortingContract();
+            Object p = getPortingContract(portingContractID);
+            if(p==null) return false;
+            pc = (PortingContract)p;
+
+            //TODO: assert
+            BigInteger amount = pc.AmountBNB;
+            byte[] bnbaddr = pc.CollatBCNAddr;
+
             for (int i=0; i<20; i++)
             {
                 if (output.addr[i]!=bnbaddr[i]) return false;
