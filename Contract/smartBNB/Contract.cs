@@ -184,7 +184,6 @@ namespace smartBNB
                        4 BigInteger[]/BigInteger[][] data
                        */
                     bool r = SaveChallengeState(args);
-                    Storage.Put("r", r?"strue":"sfalse"); //DEBUG
                     return r;
                 }
                 else if (operation=="executeChallenge")
@@ -195,43 +194,36 @@ namespace smartBNB
                 else if (operation=="registerAsCollateral")
                 {
                     bool r = RegisterAsCollateral((byte[])args[0], (byte[])args[1], (BigInteger)args[2], (byte)args[3]);
-                    Storage.Put("r", r?"regcolltrue":"regcollfalse"); //DEBUG
                     return r;
                 }
                 else if (operation=="newPorting")
                 {
                     byte[] r = RequestNewPorting((byte[])args[0], (byte[])args[1], (BigInteger)args[2]);
-                    Storage.Put("r", r); //DEBUG
                     return r.Length>0;
                 }
                 else if (operation=="ackDepositByUser")
                 {
                     bool r = AckDepositByUser((byte[])args[0]);
-                    Storage.Put("r", r?"acktrue":"ackfalse"); //DEBUG
                     return r;
                 }
                 else if (operation=="challengedeposit")
                 {
                     bool r = ChallengeDeposit((byte[])args[0]);
-                    Storage.Put("r", r?"acktrue":"ackfalse"); //DEBUG
                     return r;
                 }
                 else if (operation=="challengewithdraw")
                 {
                     bool r = ChallengeWithdraw((byte[])args[0]);
-                    Storage.Put("r", r?"acktrue":"ackfalse"); //DEBUG
                     return r;
                 }
                 else if (operation=="requestwithdraw")
                 {
                     bool r = RequestWithdraw((byte[])args[0]);
-                    Storage.Put("r", r?"acktrue":"ackfalse"); //DEBUG
                     return r;
                 }
                 else if (operation=="unlockcollateral")
                 {
                     bool r = UnlockCollateral((byte[])args[0]);
-                    Storage.Put("r", r?"acktrue":"ackfalse"); //DEBUG
                     return r;
                 }
                 else if (operation=="updatepriceoracle")
@@ -302,7 +294,6 @@ namespace smartBNB
                    1 byte[] txid
                    2 int signature index*/
                 challengeResult = ChallengeInitialChecks(portingContractID, sigNum, byteP.AsBigInteger());
-                Storage.Put("r", challengeResult?"0true":"0false"); //DEBUG
             }
             else if(challengeNum==0x2)
             {
@@ -311,7 +302,6 @@ namespace smartBNB
                    1 byte[] txid
                    2 int signature index*/
                 challengeResult = ChallengeCheckBytesV2(portingContractID, sigNum, pubks[sigNum]);
-                Storage.Put("r", challengeResult?"1true":"1false"); //DEBUG
             }
             else if(challengeNum==0x3)
             {
@@ -320,7 +310,6 @@ namespace smartBNB
                    1 byte[] txid
                    2 int signature index*/
                 challengeResult = ChallengeSha512(portingContractID, sigNum);
-                Storage.Put("r", challengeResult?"2true":"2false"); //DEBUG
             }
             else if(challengeNum==0x4)
             {
@@ -329,7 +318,6 @@ namespace smartBNB
                    1 byte[] txid
                    2 int signature index*/
                 challengeResult = ChallengeSha512ModQ(portingContractID, sigNum);
-                Storage.Put("r", challengeResult?"3true":"3false"); //DEBUG
             }
             else if(challengeNum==0x5)
             {
@@ -338,7 +326,6 @@ namespace smartBNB
                    1 byte[] txid
                    2 int signature index*/
                 challengeResult = ChallengePointEqual(portingContractID, sigNum, byteP.AsBigInteger(), byteD.AsBigInteger());
-                Storage.Put("r", challengeResult?"4true":"4false"); //DEBUG
             }
             else if(challengeNum==0x6){
                 /* ARGS
@@ -348,22 +335,18 @@ namespace smartBNB
                    3 int step num
                    4 string mulid*/
                 challengeResult = ChallengeEdDSA_PointMul_Setp(portingContractID, sigNum, (int)args[2], (string)args[3], pubksDecompressed, byteP.AsBigInteger(), byteD.AsBigInteger());
-                Storage.Put("r", challengeResult?"5true":"5false"); //DEBUG
             }
             else if(challengeNum==0x7){
                 /* ARGS
                    0 byte[] collatid
                    1 byte[] txid*/
                 challengeResult = ChallengeTxProof(portingContractID);
-                Storage.Put("r", challengeResult?"6true":"6false"); //DEBUG
             }
             else if (challengeNum==0x8){
                 challengeResult = ChallengeTxData(portingContractID);
-                Storage.Put("r", challengeResult?"7true":"7false"); //DEBUG
             }
             else if (challengeNum==0x9){
                 challengeResult = proofIsSaved(portingContractID);
-                Storage.Put("r", challengeResult?"8true":"8false"); //DEBUG
             }
 
             if (!challengeResult)
