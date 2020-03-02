@@ -228,7 +228,7 @@ namespace smartBNB
                 }
                 else if (operation=="requestwithdraw")
                 {
-                    bool r = RequestWithdraw((byte[])args[0]);
+                    bool r = RequestWithdraw((byte[])args[0], (byte[])args[1], (BigInteger)args[2], (byte[])args[3]);
                     return r;
                 }
                 else if (operation=="unlockcollateral")
@@ -818,7 +818,7 @@ namespace smartBNB
 
             Collat collat = new Collat();
             Object c = getCollatById(collatID);
-            if(c==null) return new byte[0];
+            if(c==null) return false;
             collat = (Collat)c;
 
             BigInteger timestamp = Runtime.Time;
