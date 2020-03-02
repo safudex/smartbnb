@@ -248,6 +248,7 @@ namespace smartBNB
                     Storage.Put("price", price);
                     return true;
                 }
+                else if (operation == "getCurrentPrice") return getCurrentPrice();
                 else if (operation == "balanceOf") return BalanceOf((byte[])args[0]);
                 else if (operation == "decimals") return Decimals();
                 else if (operation == "name") return Name();
@@ -449,33 +450,33 @@ namespace smartBNB
             Transferred(from, null, amount);
         }
 
-        public static object getCollatById(byte[] collatID)
+        private static object getCollatById(byte[] collatID)
         {
             byte[] collat = Storage.Get(collatID);
             if (collat.Length == 0) return null;
             return BytesToObject(collat);
         }
 
-        public static bool putCollatById(byte[] collatID, Collat collat)
+        private static bool putCollatById(byte[] collatID, Collat collat)
         {
             Storage.Put(collatID, ObjectToBytes(collat));
             return true;
         }
 
-        public static object getPortingContract(byte[] portingContractID)
+        private static object getPortingContract(byte[] portingContractID)
         {
             byte[] pc = Storage.Get(portingContractID);
             if (pc.Length == 0) return null;
             return BytesToObject(pc);
         }
 
-        public static bool putPortingContract(byte[] portingContractID, PortingContract portingContract)
+        private static bool putPortingContract(byte[] portingContractID, PortingContract portingContract)
         {
             Storage.Put(portingContractID, ObjectToBytes(portingContract));
             return true;
         }
 
-        public static bool executeChallenge(byte[] portingContractID, byte challengeNum, int sigNum, byte[][] pubks, byte[][] pubksDecompressed, params object[] args)
+        private static bool executeChallenge(byte[] portingContractID, byte challengeNum, int sigNum, byte[][] pubks, byte[][] pubksDecompressed, params object[] args)
         {
             PortingContract pc = new PortingContract();
             Object p = getPortingContract(portingContractID);
@@ -613,7 +614,7 @@ namespace smartBNB
         }
 
         // Register a new collat or increase/decrease the deposit of an existing one
-        public static bool RegisterAsCollateral(byte[] address, byte[] BNCAddress, BigInteger newAmount, byte operation)
+        private static bool RegisterAsCollateral(byte[] address, byte[] BNCAddress, BigInteger newAmount, byte operation)
         {
             if (!Runtime.CheckWitness(address)) return false;
             if (BNCAddress.Length!=20) return false;
@@ -654,21 +655,21 @@ namespace smartBNB
             return true;
         }
 
-        public static BigInteger calculateGASCollateralAmount(BigInteger amountBNB, BigInteger currentPrice)
+        private static BigInteger calculateGASCollateralAmount(BigInteger amountBNB, BigInteger currentPrice)
         {
             return (amountBNB*currentPrice*FACTOR_COLLATERAL_NUMERATOR)/(FACTOR_COLLATERAL_DENOMINATOR*PRICE_DENOMINATOR);
         }
 
-        public static BigInteger calculateCollateralAmountLeft(Collat collat, BigInteger currentPrice)
+        private static BigInteger calculateCollateralAmountLeft(Collat collat, BigInteger currentPrice)
         {
             return collat.CollateralAmount - calculateGASCollateralAmount(collat.CustodiedBNB, currentPrice);
         }
 
-        public static BigInteger getCurrentPrice(){
+        private static BigInteger getCurrentPrice(){
             return Storage.Get("price").AsBigInteger();
         }
 
-        public static byte[] RequestNewPorting(byte[] collatID, byte[] userAddr, BigInteger AmountBNB)
+        private static byte[] RequestNewPorting(byte[] collatID, byte[] userAddr, BigInteger AmountBNB)
         {
             if (!Runtime.CheckWitness(userAddr)) return new byte[0];
             Collat collat = new Collat();
@@ -703,7 +704,7 @@ namespace smartBNB
             return portingContractID;
         }
 
-        public static bool AckDepositByUser(byte[] portingContractID)
+        private static bool AckDepositByUser(byte[] portingContractID)
         {
             byte[] collatAddr = portingContractID.Range(0, 20);
             if (!Runtime.CheckWitness(collatAddr)) return false;
@@ -742,7 +743,7 @@ namespace smartBNB
             Mint(pc.UserAddr, pc.AmountBNB);
         }
 
-        public static bool ChallengeDeposit(byte[] portingContractID)
+        private static bool ChallengeDeposit(byte[] portingContractID)
         {
             // witness(useraddr)
             if (!Runtime.CheckWitness(portingContractID.Range(40,20))) return false; // TODO: Enable fishermen to also create challenges
@@ -765,7 +766,7 @@ namespace smartBNB
             return true;
         }
 
-        public static bool ChallengeWithdraw(byte[] portingContractID)
+        private static bool ChallengeWithdraw(byte[] portingContractID)
         {
             PortingContract pc = new PortingContract();
             Object p = getPortingContract(portingContractID);
@@ -786,7 +787,7 @@ namespace smartBNB
             return true;
         }
 
-        public static bool RequestWithdraw(byte[] portingContractID)
+        private static bool RequestWithdraw(byte[] portingContractID)
         {
             
             Storage.Put("debug", "1"); //DEBUG
@@ -816,7 +817,7 @@ namespace smartBNB
             return false;
         }
 
-        public static bool UnlockCollateral(byte[] portingContractID)
+        private static bool UnlockCollateral(byte[] portingContractID)
         {
             PortingContract pc = new PortingContract();
             Object p = getPortingContract(portingContractID);
@@ -1275,37 +1276,37 @@ namespace smartBNB
             return x < 0 ? (x + m) : (x % m);
         }
 
-        public static ulong sum0(ulong v)
+        private static ulong sum0(ulong v)
         {
             return ROTR(v, 28) ^ ROTR(v, 34) ^ ROTR(v, 39);
         }
 
-        public static ulong sum1(ulong v)
+        private static ulong sum1(ulong v)
         {
             return ROTR(v, 14) ^ ROTR(v, 18) ^ ROTR(v, 41);
         }
 
-        public static ulong sig0(ulong v)
+        private static ulong sig0(ulong v)
         {
             return ROTR(v, 1) ^ ROTR(v, 8) ^ (v >> 7);
         }
 
-        public static ulong sig1(ulong v)
+        private static ulong sig1(ulong v)
         {
             return ROTR(v, 19) ^ ROTR(v, 61) ^ (v >> 6);
         }
 
-        public static ulong Ch(ulong x, ulong y, ulong z)
+        private static ulong Ch(ulong x, ulong y, ulong z)
         {
             return (x & y) ^ ((~x) & z);
         }
 
-        public static ulong Maj(ulong x, ulong y, ulong z)
+        private static ulong Maj(ulong x, ulong y, ulong z)
         {
             return (x & y) ^ (x & z) ^ (y & z);
         }
 
-        public static ulong ROTR(ulong v, int count)//61
+        private static ulong ROTR(ulong v, int count)//61
         {
             ulong temp = (v >> count);
 
@@ -1856,7 +1857,7 @@ namespace smartBNB
             return Validate(txproof, blockHeader);
         }
 
-        public static BigInteger String2BigInteger(string str)
+        private static BigInteger String2BigInteger(string str)
         {
             BigInteger res = 0;
             byte[] a = str.AsByteArray();
