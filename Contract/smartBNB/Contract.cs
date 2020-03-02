@@ -2046,7 +2046,7 @@ namespace smartBNB
             return (AreEqual(txProofLeafHash, getLeafHashByTxBytes(bytestx.Take(txb.Length-2))));
         }
 
-	private static BigInteger decodeTimestamp(ulong[] bz, int[] ini_fin)
+        private static BigInteger decodeTimestamp(ulong[] bz, int[] ini_fin)
         {
             if (bz.Length<1) return 0;
             //decode field number + type
@@ -2056,13 +2056,13 @@ namespace smartBNB
             if (typ!=0) return 0;
             ulong fnum = value64_n[0] >> 3;
             if (fnum > 268435456) return 0; // 268435456==(1<<29 - 1)
-            
+
             //slide arr
             ini_fin[0] = ini_fin[0]+(int)value64_n[1];
-            
+
             //decode time
             value64_n = DecodeUvarint(bz, ini_fin);
-            
+
             return (BigInteger)value64_n[0];
         }
 
