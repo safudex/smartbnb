@@ -454,6 +454,17 @@ namespace smartBNB
             return BytesToObject(collat);
         }
 
+        // TODO: Simplify code by replacing similar code with this function
+        // This results in FAULTs when the collat is not registered
+        public static Collat getNonEmptyCollatById(byte[] collatID)
+        {
+            Collat collat = new Collat();
+            Object c = getCollatById(collatID);
+            if(c==null) throw new Exception("Collat doesn't exist");
+            collat = (Collat)c;
+            return collat;
+        }
+
         private static bool putCollatById(byte[] collatID, Collat collat)
         {
             Storage.Put(collatID, ObjectToBytes(collat));
