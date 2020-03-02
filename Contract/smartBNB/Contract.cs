@@ -257,6 +257,7 @@ namespace smartBNB
                 else if (operation == "totalSupply") return TotalSupply();
                 else if (operation == "transfer") return Transfer((byte[])args[0], (byte[])args[1], (BigInteger)args[2], ExecutionEngine.CallingScriptHash);
                 else if (operation == "exchangeLostCollateral") return ExchangeLostCollateral((byte[])args[0], (BigInteger)args[1]);
+                else if (operation == "undercollateralizationChallenge") return UndercollateralizationChallenge((byte[])args[0]);
                 else
                 {
                     return false;
@@ -600,6 +601,22 @@ namespace smartBNB
             // Transfer token
             var args = new object[] { from, to, amount };
             if (!(bool)CGAS("transfer", args)) throw new Exception("Failed to transfer NEP-5 tokens!");
+        }
+
+        private static bool UndercollateralizationChallenge(byte[] collatID)
+        {
+            Collat collat = new Collat();
+            Object c = getCollatById(collatID);
+            if(c==null) return false;
+            collat = (Collat)c;
+            BigInteger currentPrice = getCurrentPrice();
+            // If collateralization ratio is lower than 1.2, liquidate collat
+            if ((collat.CollateralAmount * PRICE_DENOMINATOR * 10) < (collat.CustodiedBNB * currentPrice * 12))
+            {
+                liquidateCollat(collat, collatID);
+                return true;
+            }
+            return false;
         }
         
         private static void liquidateCollat(Collat collat, byte[] collatID){
