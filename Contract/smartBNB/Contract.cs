@@ -15,12 +15,7 @@ namespace smartBNB
         private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED = 0x03;
         private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT = 0x04;//CHALLENGE ACTIVATED
         private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW = 0x05;//CHALLENGE ACTIVATED
-        private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW_FAILED = 0x07;
-        private static readonly byte CONTRACT_STATUS_PORTREQUEST_TIMEOUT = 0x08;
-        private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED_TIMEOUT = 0x09;
-        private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT_TIMEOUT = 0x0a;
-        private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW_TIMEOUT = 0x0b;
-        private static readonly byte CONTRACT_STATUS_FINISHED = 0x0c;
+        private static readonly byte CONTRACT_STATUS_FINISHED = 0x06;
 
         // TODO: Update these constants
         private static readonly BigInteger CONTRACT_TIMEOUT_PORTREQUEST = 0;//60*60*12;
@@ -414,11 +409,11 @@ namespace smartBNB
         private static bool ExchangeLostCollateral(byte[] from, BigInteger amountBNB)
         {
             if (!Runtime.CheckWitness(from)) return false;
-            if (amount < 1) return false;
+            if (amountBNB < 1) return false;
 
             BigInteger lostCollateralGAS = Storage.Get("lostCollateralGAS").AsBigInteger();
             BigInteger unbackedBNB = Storage.Get("unbackedBNB").AsBigInteger();
-            if(amount > unbackedBNB) return false;
+            if(amountBNB > unbackedBNB) return false;
 
             BigInteger exchangedGAS = (amountBNB*lostCollateralGAS)/unbackedBNB;
 
@@ -427,6 +422,7 @@ namespace smartBNB
             Storage.Put("unbackedBNB", unbackedBNB - amountBNB);
 
             TransferCGAS(ExecutionEngine.ExecutingScriptHash, from, exchangedGAS);
+            return true;
         }
 
         private static void Mint(byte[] to, BigInteger amount)
@@ -866,7 +862,7 @@ namespace smartBNB
                     // User has not sent the BNB (no challenge -> we assume no BNB was sent)
                     collat.CollateralAmount = collat.CollateralAmount + DEPOSIT_CHALLENGE + pc.GASDeposit;
                     collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
-                    pc.ContractStatus = CONTRACT_STATUS_PORTREQUEST_TIMEOUT;
+                    pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
                 }
             }
@@ -876,7 +872,7 @@ namespace smartBNB
                 {
                     // Collat has uploaded proof & user hasn't been able to prove it wrong
                     // Collat wins, withdraw successful
-                    pc.ContractStatus = CONTRACT_STATUS_FINISHE;
+                    pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
                     collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
                     TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.CollatAddr, DEPOSIT_CHALLENGE); // Give collat the user's security deposit
