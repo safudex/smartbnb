@@ -15,7 +15,6 @@ namespace smartBNB
         private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED = 0x03;
         private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT = 0x04;//CHALLENGE ACTIVATED
         private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW = 0x05;//CHALLENGE ACTIVATED
-        private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT_FAILED = 0x06;
         private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW_FAILED = 0x07;
         private static readonly byte CONTRACT_STATUS_PORTREQUEST_TIMEOUT = 0x08;
         private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED_TIMEOUT = 0x09;
@@ -256,6 +255,7 @@ namespace smartBNB
                 else if (operation == "supportedStandards") return SupportedStandards();
                 else if (operation == "totalSupply") return TotalSupply();
                 else if (operation == "transfer") return Transfer((byte[])args[0], (byte[])args[1], (BigInteger)args[2], ExecutionEngine.CallingScriptHash);
+                else if (operation == "exchangeLostCollateral") return ExchangeLostCollateral((byte[])args[0], (BigInteger)args[1]);
                 else
                 {
                     return false;
@@ -269,7 +269,7 @@ namespace smartBNB
 
         private static Balance deserializeBalance(byte[] balance){
             if (balance.Length != 0){
-                return new Balance() { amount = 0, lastTimeTransfered = 0 };
+                return new Balance() { amount = 0, lastTimeTransfered = Runtime.Time };
             } else {
                 return (Balance)Helper.Deserialize(balance);
             }
@@ -370,7 +370,7 @@ namespace smartBNB
 
 #if DEBUG
         [DisplayName("transfer")] //Only for ABI file
-            public static bool Transfer(byte[] from, byte[] to, BigInteger amount) => true;
+        public static bool Transfer(byte[] from, byte[] to, BigInteger amount) => true;
 #endif
 
         //Methods of actual execution
@@ -407,6 +407,46 @@ namespace smartBNB
 
             Transferred(from, to, amount);
             return true;
+        }
+
+        private static bool ExchangeLostCollateral(byte[] from, BigInteger amountBNB)
+        {
+            if (!Runtime.CheckWitness(from)) return false;
+            if (amount < 1) return false;
+
+            BigInteger lostCollateralGAS = Storage.Get("lostCollateralGAS").AsBigInteger();
+            BigInteger unbackedBNB = Storage.Get("unbackedBNB").AsBigInteger();
+            if(amount > unbackedBNB) return false;
+
+            BigInteger exchangedGAS = (amountBNB*lostCollateralGAS)/unbackedBNB;
+
+            Burn(from, amountBNB);
+            Storage.Put("lostCollateralGAS", lostCollateralGAS - exchangedGAS);
+            Storage.Put("unbackedBNB", unbackedBNB - amountBNB);
+
+            TransferCGAS(ExecutionEngine.ExecutingScriptHash, from, exchangedGAS);
+        }
+
+        private static void Mint(byte[] to, BigInteger amount)
+        {
+            StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
+            Balance toBalance = updateBalance(deserializeBalance(asset.Get(to)));
+            toBalance.amount = toBalance.amount + amount;
+            asset.Put(to, Helper.Serialize(toBalance));
+
+            Transferred(null, to, amount);
+        }
+
+        // amount should never be negative
+        private static void Burn(byte[] from, BigInteger amount)
+        {
+            StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
+            Balance fromBalance = updateBalance(deserializeBalance(asset.Get(from)));
+            if (amount > fromBalance.amount) throw new InvalidOperationException("Burning non-existing sBNB");
+            fromBalance.amount = fromBalance.amount - amount;
+            asset.Put(from, Helper.Serialize(fromBalance));
+
+            Transferred(from, null, amount);
         }
 
         public static object getCollatById(byte[] collatID)
@@ -516,18 +556,39 @@ namespace smartBNB
 
             if (!challengeResult)
             {
+                byte[] collatID = portingContractID.Range(0, 40);
+                Collat collat = new Collat();
+                Object c = getCollatById(collatID);
+                if(c==null) return false;
+                collat = (Collat)c;
+
                 if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEWITHDRAW)
                 {
-                    //EL COLLAT HA PERDIDO EL CHALLENGE, ENVIAR AL USUARIO NEP5
-                    pc.ContractStatus = CONTRACT_STATUS_CHALLENGEWITHDRAW_FAILED;
-                    return false;
+                    // Collateral has not sent BNB to the users that requested it
+                    // Give user an equivalent amount 
+                    // TODO: The incentive needs to be bigger here, collat may not bother sendinf bnb for small amounts because he doesn't have much to lose
+                    pc.ContractStatus = CONTRACT_STATUS_FINISHED;
+                    putPortingContract(portingContractID, pc);
+
+                    BigInteger collateralGASTaken = (pc.AmountBNB * collat.CollateralAmount)/collat.CustodiedBNB;
+                    collat.CollateralAmount = collat.CollateralAmount - collateralGASTaken;
+                    collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
+                    putCollatById(collatID, collat);
+
+                    TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, collateralGASTaken + DEPOSIT_CHALLENGE);
                 }
                 else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
                 {
-                    //EL USUARIO HA PERDIDO EL CHALLENGE, ENVIAR NEP5 AL COLLAT NEP5 (solo el reward, no el collateral)
-                    pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT_FAILED;
-                    return false;
+                    // User did not deposit BNB and faked a challenge
+                    // Collat wins, Deposit gets reverted and collat keeps the user's DEPOSIT_CHALLENGE & initial GASDeposit
+                    pc.ContractStatus = CONTRACT_STATUS_FINISHED;
+                    putPortingContract(portingContractID, pc);
+
+                    collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
+                    collat.CollateralAmount = collat.CollateralAmount + (DEPOSIT_CHALLENGE*2) + pc.GASDeposit;
+                    putCollatById(collatID, collat);
                 }
+                return false;
             }
 
             return challengeResult;
@@ -538,6 +599,17 @@ namespace smartBNB
             // Transfer token
             var args = new object[] { from, to, amount };
             if (!(bool)CGAS("transfer", args)) throw new Exception("Failed to transfer NEP-5 tokens!");
+        }
+        
+        private static void liquidateCollat(Collat collat, byte[] collatID){
+            BigInteger lostCollateralGAS = Storage.Get("lostCollateralGAS").AsBigInteger();
+            Storage.Put("lostCollateralGAS", lostCollateralGAS + collat.CollateralAmount);
+            BigInteger unbackedBNB = Storage.Get("unbackedBNB").AsBigInteger();
+            Storage.Put("unbackedBNB", unbackedBNB + collat.CustodiedBNB);
+
+            collat.CollateralAmount = 0;
+            collat.CustodiedBNB = 0;
+            putCollatById(collatID, collat);
         }
 
         // Register a new collat or increase/decrease the deposit of an existing one
@@ -649,16 +721,25 @@ namespace smartBNB
             if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
             if((Runtime.Time-pc.LastTimestamp) > CONTRACT_TIMEOUT_PORTREQUEST) return false;
 
-            pc.ContractStatus = CONTRACT_STATUS_DEPOSITOK;
-            pc.LastTimestamp = Runtime.Time;
-            collat.CollateralAmount = collat.CollateralAmount + DEPOSIT_CHALLENGE;
+            SuccessfulDeposit(pc, portingContractID, collat, collatID, false);
 
-            putPortingContract(portingContractID, pc);
-            putCollatById(collatID, collat);
-
-            // TODO: Give user sBNB
             TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, pc.GASDeposit);
             return true;
+        }
+
+        private static void SuccessfulDeposit(PortingContract pc, byte[] portingContractID, Collat collat, byte[] collatID, bool collateralPunished)
+        {
+            pc.ContractStatus = CONTRACT_STATUS_DEPOSITOK;
+            pc.LastTimestamp = Runtime.Time;
+            putPortingContract(portingContractID, pc);
+
+            if (!collateralPunished)
+            {
+                collat.CollateralAmount = collat.CollateralAmount + DEPOSIT_CHALLENGE;
+                putCollatById(collatID, collat);
+            }
+
+            Mint(pc.UserAddr, pc.AmountBNB);
         }
 
         public static bool ChallengeDeposit(byte[] portingContractID)
@@ -755,7 +836,7 @@ namespace smartBNB
                 if (t > (CONTRACT_TIMEOUT_WITHDRAWREQUEST + WINDOW_CHALLENGE))
                 {
                     // Withdraw succesful, liberate collateral
-                    pc.ContractStatus = CONTRACT_STATUS_WITHDRAWREQUESTED_TIMEOUT;
+                    pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
                     collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
                 }
@@ -771,49 +852,35 @@ namespace smartBNB
                     putPortingContract(portingContractID, pc);
                 }
             }
-            else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEWITHDRAW || pc.ContractStatus == CONTRACT_STATUS_CHALLENGEDEPOSIT)
-            {//time to upload the proof + 
+            else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEWITHDRAW)
+            {
                 if (t > (CONTRACT_TIMEOUT_UPLOADPROOF + WINDOW_CHALLENGE))
                 {
-                    if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEWITHDRAW)
-                    {
-                        // Collat has uploaded proof & user hasn't been able to prove it wrong
-                        // Collat wins, withdraw successful
-                        pc.ContractStatus = CONTRACT_STATUS_CHALLENGEWITHDRAW_TIMEOUT;
-                        putPortingContract(portingContractID, pc);
-                        collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
-                        TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.CollatAddr, DEPOSIT_CHALLENGE); // Give collat the user's security deposit
-                    }
-                    else //CONTRACT_STATUS_CHALLENGEDEPOSIT
-                    {
-                        // User has uploaded proof, collat hasn't been able to prove it wrong
-                        // User wins
-                        // Give the collateral that was locked when porting the tokens to the user and remove it from collat's side
-                        pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT_TIMEOUT;
-                        putPortingContract(portingContractID, pc);
-                        BigInteger currentPrice = getCurrentPrice();
-                        // TODO: Could this be a problem if collat is currently undercollateralized? -> Collat could use it to further undercollateralize itself
-                        BigInteger GASCollateral = min(calculateGASCollateralAmount(pc.AmountBNB, currentPrice), collat.CollateralAmount); // Make sure it is not bigger than the total collateral due to price fluctuations
-                        collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
-                        collat.CollateralAmount = collat.CollateralAmount - GASCollateral;
-                        TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, (DEPOSIT_CHALLENGE*2) + GASCollateral + pc.GASDeposit);
-                    }
+                    // Collat has uploaded proof & user hasn't been able to prove it wrong
+                    // Collat wins, withdraw successful
+                    pc.ContractStatus = CONTRACT_STATUS_FINISHE;
+                    putPortingContract(portingContractID, pc);
+                    collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
+                    TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.CollatAddr, DEPOSIT_CHALLENGE); // Give collat the user's security deposit
                 }
             }
-            else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEDEPOSIT_FAILED)
+            else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEDEPOSIT)
             {
-                // User did not deposit BNB and faked a challenge
-                // Collat wins, Deposit gets reverted and collat keeps the user's DEPOSIT_CHALLENGE
-                pc.ContractStatus = CONTRACT_STATUS_FINISHED;
-                putPortingContract(portingContractID, pc);
-                collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
-                collat.CollateralAmount = collat.CollateralAmount + (DEPOSIT_CHALLENGE*2) + pc.GASDeposit;
+                if (t > (CONTRACT_TIMEOUT_UPLOADPROOF + WINDOW_CHALLENGE))
+                {
+                    // User has uploaded proof, collat hasn't been able to prove it wrong -> User wins
+                    // Validate deposit and distribute rewards
+                    SuccessfulDeposit(pc, portingContractID, collat, collatID, true);
+                    TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, (DEPOSIT_CHALLENGE * 2) + pc.GASDeposit);
+                }
+
             }
             else
+            {
                 return false;
+            }
 
             putCollatById(collatID, collat);
-            
             return true;
         }
 
@@ -1912,7 +1979,7 @@ namespace smartBNB
             return new ulong[]{0, 0};
         }
 
-	//TODO: test unexpected faults
+        //TODO: test unexpected faults
         private static ulong[] DecodeUvarint(ulong[] bz, int[] ini_fin)
         {
             ulong[] un = Uvarint(bz, ini_fin);
