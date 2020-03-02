@@ -71,7 +71,7 @@ namespace smartBNB
         public struct PortingContract
         {
             public byte ContractStatus;
-            public byte[] CollatBCNAddr;
+            public byte[] BCNAddr;
             public byte[] CollatAddr;
             public byte[] UserAddr;
             public BigInteger AmountBNB;
@@ -718,7 +718,7 @@ namespace smartBNB
             PortingContract pc = new PortingContract();
             pc.ContractStatus = CONTRACT_STATUS_PORTREQUEST;
             pc.CollatAddr = collatID.Range(0, 20);
-            pc.CollatBCNAddr = collat.BNCAddress;
+            pc.BCNAddr = collat.BNCAddress;
             pc.UserAddr=userAddr;
             pc.AmountBNB = AmountBNB;
             pc.LastTimestamp = timestamp;
@@ -811,34 +811,32 @@ namespace smartBNB
             return true;
         }
 
-        private static bool RequestWithdraw(byte[] portingContractID)
+        private static bool RequestWithdraw(byte[] collatID, byte[] userAddr, BigInteger AmountBNB, byte[] userBCNAddr)
         {
-            
-            Storage.Put("debug", "1"); //DEBUG
-            byte[] userAddr = portingContractID.Range(40, 20);
-            Storage.Put("debug", userAddr); //DEBUG
-            if (Runtime.CheckWitness(userAddr))
-            {
-                Storage.Put("debug", "3"); //DEBUG
-                PortingContract pc = new PortingContract();
-                Object p = getPortingContract(portingContractID);
-                if(p==null) return false;
-                pc = (PortingContract)p;
-                Storage.Put("debug", "4"); //DEBUG
-                if(pc.ContractStatus!=CONTRACT_STATUS_DEPOSITOK) return false;
-                Storage.Put("debug", "5"); //DEBUG
-                if(userAddr!=pc.UserAddr) return false;
-                Storage.Put("debug", "6"); //DEBUG
-                pc.ContractStatus = CONTRACT_STATUS_WITHDRAWREQUESTED;
-                pc.LastTimestamp = Runtime.Time;
+            if (!Runtime.CheckWitness(userAddr)) return false;
+            if (AmountBNB < 1) return false;
 
-                //QUEMAR SBNB NEP5
-                
-                putPortingContract(portingContractID, pc);
+            Collat collat = new Collat();
+            Object c = getCollatById(collatID);
+            if(c==null) return new byte[0];
+            collat = (Collat)c;
 
-                return true;
-            }
-            return false;
+            BigInteger timestamp = Runtime.Time;
+            byte[] portingContractID = collatID.Concat(userAddr).Concat(timestamp.AsByteArray());
+            if(getPortingContract(portingContractID) != null) return false;
+
+            PortingContract pc = new PortingContract();
+            pc.ContractStatus = CONTRACT_STATUS_WITHDRAWREQUESTED;
+            pc.CollatAddr = collatID.Range(0, 20);
+            pc.BCNAddr = userBCNAddr;
+            pc.UserAddr = userAddr;
+            pc.AmountBNB = AmountBNB;
+            pc.LastTimestamp = timestamp;
+            pc.GASDeposit = 0;
+            putPortingContract(portingContractID, pc);
+
+            Burn(userAddr, AmountBNB);
+            return true;
         }
 
         private static bool UnlockCollateral(byte[] portingContractID)
@@ -2123,7 +2121,7 @@ namespace smartBNB
 
             //TODO: assert
             BigInteger amount = pc.AmountBNB;
-            byte[] bnbaddr = pc.CollatBCNAddr;
+            byte[] bnbaddr = pc.BCNAddr;
 
             for (int i=0; i<20; i++)
             {
