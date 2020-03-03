@@ -88,7 +88,8 @@ async function SaveState(){
 		var ys = cmdArgs[4].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', ys);
 		//5 byte[][] signablebytes
-		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
+//		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
+		var signableBytes = cmdArgs[5].split(",").map(v=>v.match(/.{1,2}/g).map(v=>Neon.sc.ContractParam.integer(parseInt(v, 16))))
 		pushParams(neonJSParams, 'Array', signableBytes);
 		//6 ulong[][] pres
 		var pres = cmdArgs[6].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
@@ -128,9 +129,9 @@ async function SaveState(){
 			Ps_sb = Ps_sb.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-		await savePointMuls(Ps_sb, 2, "Ps_sb", "multi")
-		await savePointMuls(ss_sb, 2, "ss_sb", "simple")
-		await savePointMuls(Qs_sb, 2, "Qs_sb", "multi")
+//		await savePointMuls(Ps_sb, 2, "Ps_sb", "multi")
+//		await savePointMuls(ss_sb, 2, "ss_sb", "simple")
+//		await savePointMuls(Qs_sb, 2, "Qs_sb", "multi")
 
 		
 		//Second invoke, state pointmul ha
@@ -147,9 +148,9 @@ async function SaveState(){
 			Ps_ha = Ps_ha.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-		await savePointMuls(Ps_ha, 2, "Ps_ha", "multi")
-		await savePointMuls(ss_ha, 2, "ss_ha", "simple")
-		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
+//		await savePointMuls(Ps_ha, 2, "Ps_ha", "multi")
+//		await savePointMuls(ss_ha, 2, "ss_ha", "simple")
+//		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
 }
 
 async function savePointMuls(arr, nchks, id, type) {
@@ -306,7 +307,7 @@ function RegisterAsCollateral(){
     //1 byte[] bncaddress
     var bncaddr = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     pushParams(neonJSParams, 'Hex', bncaddr);
-    pushParams(neonJSParams, 'Integer', 300)
+    pushParams(neonJSParams, 'Integer', 3000)
     pushParams(neonJSParams, 'Integer', 1)
 
     invokeOperation("registerAsCollateral", neonJSParams, 50, 10)
@@ -342,7 +343,7 @@ function executeChallenge(){
     //1 byte[] portingContractID
   //  pushParams(neonJSParams, 'Address', ECO_WALLET._address);
 	pushParams(neonJSParams, 'Hex', portingContractID)
-    pushParams(neonJSParams, 'Integer', 0)
+    pushParams(neonJSParams, 'Integer', 2)
     pushParams(neonJSParams, 'Integer', 0)
 
     invokeOperation("executeChallenge", neonJSParams, 50, 10)
@@ -391,22 +392,36 @@ function unlockCollateral(){
 
     invokeOperation("unlockcollateral", neonJSParams, 50, 10)
 }
+function testDecodeTimestamp(){
+    var neonJSParams = [];
+		var signableBytes = cmdArgs[5].split(",").map(v=>v.match(/.{1,2}/g).map(v=>Neon.sc.ContractParam.integer(parseInt(v, 16))))
+console.log(signableBytes[0].length)
+    pushParams(neonJSParams, 'Array', signableBytes[0])
+
+    invokeOperation("d", neonJSParams, 50, 10)
+}
+
+//testDecodeTimestamp()
 
 collatid = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-portingContractID = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa23ba2703c53263e8d6e522dc32203339dcd8eee975c25b5e"
-
-scriptHash = "b18d4d9e6e9463f0d7edfbbcce474cce5f3edaed"
-console.log(ECO_WALLET._address)
+portingContractID = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa23ba2703c53263e8d6e522dc32203339dcd8eee9009e5d5e"
+//bde3f43a374db4fc45485d9ab635776529006e3c
+scriptHash = "5e36db139f5bb57c68adaf778253c92894c66d1f"
 
 //RegisterAsCollateral()
 //NewPorting()
+//challengeDeposit()
+//SaveState()
+executeChallenge();
+
+
+
 //ackUserDepositPorting()
 //unlockCollateral()
-//SaveState()
 //requestWithdraw()
-challengeDeposit()
 //Challenge7()
 //IsSaved()
 //RemoveStorage()
-//VerifyTxOutput();
-//executeChallenge();
+//VerifyTxOutput()
+
+//challengeWithdraw();
