@@ -11,17 +11,15 @@ namespace smartBNB
     public class Contract : SmartContract
     {
         private static readonly byte CONTRACT_STATUS_PORTREQUEST = 0x01;//WAITING FOR THE USER TO SEND BNB
-        private static readonly byte CONTRACT_STATUS_DEPOSITOK = 0x02;
-        private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED = 0x03;
-        private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT = 0x04;//CHALLENGE ACTIVATED
-        private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW = 0x05;//CHALLENGE ACTIVATED
-        private static readonly byte CONTRACT_STATUS_FINISHED = 0x06;
+        private static readonly byte CONTRACT_STATUS_WITHDRAWREQUESTED = 0x02;
+        private static readonly byte CONTRACT_STATUS_CHALLENGEDEPOSIT = 0x03;//CHALLENGE ACTIVATED
+        private static readonly byte CONTRACT_STATUS_CHALLENGEWITHDRAW = 0x04;//CHALLENGE ACTIVATED
+        private static readonly byte CONTRACT_STATUS_FINISHED = 0x05;
 
-        // TODO: Update these constants
-        private static readonly BigInteger CONTRACT_TIMEOUT_PORTREQUEST = 0;//60*60*12;
-        private static readonly BigInteger CONTRACT_TIMEOUT_UPLOADPROOF = 60*5;//60*60*12;
-        private static readonly BigInteger CONTRACT_TIMEOUT_WITHDRAWREQUEST = 60*5;//60*60*12;
-        private static readonly BigInteger WINDOW_CHALLENGE = 60*5;//60*60*12;
+        private static readonly BigInteger CONTRACT_TIMEOUT_PORTREQUEST = 60*60*12;
+        private static readonly BigInteger CONTRACT_TIMEOUT_UPLOADPROOF = 60*60*12;
+        private static readonly BigInteger CONTRACT_TIMEOUT_WITHDRAWREQUEST = 60*60*12;
+        private static readonly BigInteger WINDOW_CHALLENGE = 60*60*12;
 
         private static readonly BigInteger DEPOSIT_CHALLENGE = 130;
 
@@ -738,7 +736,7 @@ namespace smartBNB
 
         private static void SuccessfulDeposit(PortingContract pc, byte[] portingContractID, Collat collat, byte[] collatID, bool collateralPunished)
         {
-            pc.ContractStatus = CONTRACT_STATUS_DEPOSITOK;
+            pc.ContractStatus = CONTRACT_STATUS_FINISHED;
             pc.LastTimestamp = Runtime.Time;
             putPortingContract(portingContractID, pc);
 
