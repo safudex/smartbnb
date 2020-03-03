@@ -76,8 +76,10 @@ function randomInt(low, high) {
 
 async function SaveState(){
 		var neonJSParams = [];
-		//1 byte[] porting
-		pushParams(neonJSParams, 'Hex', portingContractID)
+		//0 byte[] calleraddr
+		pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+		//1 byte[] txid
+		pushParams(neonJSParams, 'Hex', txHash)//cmdArgs[1]);
 		//2 byte[][] signatures 
 		var sigs = cmdArgs[2].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', sigs);
@@ -88,8 +90,7 @@ async function SaveState(){
 		var ys = cmdArgs[4].split(",").map(Neon.sc.ContractParam.integer)
 		pushParams(neonJSParams, 'Array', ys);
 		//5 byte[][] signablebytes
-//		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
-		var signableBytes = cmdArgs[5].split(",").map(v=>v.match(/.{1,2}/g).map(v=>Neon.sc.ContractParam.integer(parseInt(v, 16))))
+		var signableBytes = cmdArgs[5].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', signableBytes);
 		//6 ulong[][] pres
 		var pres = cmdArgs[6].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
@@ -129,9 +130,9 @@ async function SaveState(){
 			Ps_sb = Ps_sb.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-//		await savePointMuls(Ps_sb, 2, "Ps_sb", "multi")
-//		await savePointMuls(ss_sb, 2, "ss_sb", "simple")
-//		await savePointMuls(Qs_sb, 2, "Qs_sb", "multi")
+		await savePointMuls(Ps_sb, 2, "Ps_sb", "multi")
+		await savePointMuls(ss_sb, 2, "ss_sb", "simple")
+		await savePointMuls(Qs_sb, 2, "Qs_sb", "multi")
 
 		
 		//Second invoke, state pointmul ha
@@ -148,16 +149,19 @@ async function SaveState(){
 			Ps_ha = Ps_ha.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-//		await savePointMuls(Ps_ha, 2, "Ps_ha", "multi")
-//		await savePointMuls(ss_ha, 2, "ss_ha", "simple")
-//		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
+		await savePointMuls(Ps_ha, 2, "Ps_ha", "multi")
+		await savePointMuls(ss_ha, 2, "ss_ha", "simple")
+		await savePointMuls(Qs_ha, 2, "Qs_ha", "multi")
 }
 
 async function savePointMuls(arr, nchks, id, type) {
 		var j = arr.length/nchks
 		for (var i=0; i<nchks; i++) {
 				neonJSParams = []
-				pushParams(neonJSParams, 'Hex', portingContractID)
+				//0 byte[] calleraddr
+				pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+				//1 byte[] txid
+				pushParams(neonJSParams, 'Hex', txHash);
 				pushParams(neonJSParams, 'String', type)
 				pushParams(neonJSParams, 'String', id+i)
 				console.log(id+i)
@@ -180,10 +184,9 @@ function Challenge0(){
     var neonJSParams = [];
 
     //0 byte[] calleraddr
-    //pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
-    //pushParams(neonJSParams, 'Hex', txHash);
-				pushParams(neonJSParams, 'Hex', portingContractID)
+    pushParams(neonJSParams, 'Hex', txHash);
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 0);
 
@@ -194,10 +197,9 @@ function Challenge1(){
     var neonJSParams = [];
 
     //0 byte[] calleraddr
-    //pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
-    //pushParams(neonJSParams, 'Hex', txHash);
-	pushParams(neonJSParams, 'Hex', portingContractID)
+    pushParams(neonJSParams, 'Hex', txHash);
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 7);
 
@@ -208,10 +210,9 @@ function Challenge2(){
     var neonJSParams = [];
 
     //0 byte[] calleraddr
-   // pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
-   // pushParams(neonJSParams, 'Hex', txHash);
-	pushParams(neonJSParams, 'Hex', portingContractID)
+    pushParams(neonJSParams, 'Hex', txHash);
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 0);
     invokeOperation("challenge 2", neonJSParams, 50, 10)
@@ -221,10 +222,9 @@ function Challenge3(){
     var neonJSParams = [];
 
     //0 byte[] calleraddr
-    //pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
-    //pushParams(neonJSParams, 'Hex', txHash);
-	pushParams(neonJSParams, 'Hex', portingContractID)
+    pushParams(neonJSParams, 'Hex', txHash);
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 0);
     
@@ -235,10 +235,9 @@ function Challenge4(){
     var neonJSParams = [];
 
     //0 byte[] calleraddr
-    //pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
-    //pushParams(neonJSParams, 'Hex', txHash);
-	pushParams(neonJSParams, 'Hex', portingContractID)
+    pushParams(neonJSParams, 'Hex', txHash);
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 7);
     
@@ -249,10 +248,9 @@ function Challenge5(){
     var neonJSParams = [];
 
     //0 byte[] calleraddr
-    //pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
-    //pushParams(neonJSParams, 'Hex', txHash);
-	pushParams(neonJSParams, 'Hex', portingContractID)
+    pushParams(neonJSParams, 'Hex', txHash);
     //2 int signature id
     pushParams(neonJSParams, 'Integer', 4);
     //3 int step num
@@ -266,162 +264,60 @@ function Challenge6(){
     var neonJSParams = [];
 
     //0 byte[] calleraddr
-    //pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
-    //pushParams(neonJSParams, 'Hex', txHash);
-	pushParams(neonJSParams, 'Hex', portingContractID)
+    pushParams(neonJSParams, 'Hex', txHash);
 
     invokeOperation("challenge 6", neonJSParams, 50, 10)
 
-}
-
-function Challenge7(){
-    var neonJSParams = [];
-
-    //0 byte[] calleraddr
-    //pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-    //1 byte[] txid
-    //pushParams(neonJSParams, 'Hex', txHash);
-	pushParams(neonJSParams, 'Hex', portingContractID)
-
-    invokeOperation("challenge 7", neonJSParams, 150, 10)
 }
 
 function IsSaved(){
     var neonJSParams = [];
 
     //0 byte[] calleraddr
-    //pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
     //1 byte[] txid
-    //pushParams(neonJSParams, 'Hex', txHash);
-	pushParams(neonJSParams, 'Hex', portingContractID)
+    pushParams(neonJSParams, 'Hex', txHash);
 
     invokeOperation("proofIsSaved", neonJSParams, 50, 10)
 }
 
-function RegisterAsCollateral(){
+async function RemoveStorage(){
     var neonJSParams = [];
 
-    //0 byte[] collataddr
+    //0 byte[] calleraddr
     pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-    //1 byte[] bncaddress
-    var bncaddr = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    pushParams(neonJSParams, 'Hex', bncaddr);
-    pushParams(neonJSParams, 'Integer', 3000)
-    pushParams(neonJSParams, 'Integer', 1)
-
-    invokeOperation("registerAsCollateral", neonJSParams, 50, 10)
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
+    
+    await invokeOperation("removeStorage", neonJSParams, 50, 10)
 }
-
-function NewPorting(){
+function ActivateChallenge(){
     var neonJSParams = [];
 
-    //0 byte[] collatid 
-    pushParams(neonJSParams, 'Hex', collatid);
-    //1 byte[] portingContractID
+    //0 byte[] calleraddr
     pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-    pushParams(neonJSParams, 'Integer', 40)
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
 
-    invokeOperation("newPorting", neonJSParams, 50, 10)
+    invokeOperation("activateChallenge", neonJSParams, 50, 10)
 }
-
-function ackUserDepositPorting(){
+function Challenge7(){
     var neonJSParams = [];
 
-    //0 byte[] collatid 
-    pushParams(neonJSParams, 'Hex', portingContractID);
-    //1 byte[] portingContractID
+    //0 byte[] calleraddr
+    pushParams(neonJSParams, 'Address', ECO_WALLET._address);
+    //1 byte[] txid
+    pushParams(neonJSParams, 'Hex', txHash);
 
-    invokeOperation("ackDepositByUser", neonJSParams, 50, 10)
+    invokeOperation("challenge 7", neonJSParams, 150, 10)
 }
 
-function executeChallenge(){
-    var neonJSParams = [];
+scriptHash = "06fb138f4b4680da4d3fc2fe5d71390f5c0ad9aa"
 
-    //0 byte[] collatid 
-//    pushParams(neonJSParams, 'Hex', portingContractID);
-    //1 byte[] portingContractID
-  //  pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-	pushParams(neonJSParams, 'Hex', portingContractID)
-    pushParams(neonJSParams, 'Integer', 2)
-    pushParams(neonJSParams, 'Integer', 0)
-
-    invokeOperation("executeChallenge", neonJSParams, 50, 10)
-}
-
-function challengeDeposit(){
-    var neonJSParams = [];
-
-    //0 byte[] collatid 
-//    pushParams(neonJSParams, 'Hex', portingContractID);
-    //1 byte[] portingContractID
-  //  pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-    pushParams(neonJSParams, 'Hex', portingContractID)
-
-    invokeOperation("challengedeposit", neonJSParams, 50, 10)
-}
-
-function challengeWithdraw(){
-    var neonJSParams = [];
-
-    //0 byte[] collatid 
-//    pushParams(neonJSParams, 'Hex', portingContractID);
-    //1 byte[] portingContractID
-  //  pushParams(neonJSParams, 'Address', ECO_WALLET._address);
-    pushParams(neonJSParams, 'Hex', portingContractID)
-
-    invokeOperation("challengewithdraw", neonJSParams, 50, 10)
-}
-
-function requestWithdraw(){
-    var neonJSParams = [];
-
-    //0 byte[] collatid 
-//    pushParams(neonJSParams, 'Hex', portingContractID);
-    //1 byte[] portingContractID
-  //  pushParams(neonJSParams, 'Addrdess', ECO_WALLET._address);
-    pushParams(neonJSParams, 'Hex', portingContractID)
-
-    invokeOperation("requestwithdraw", neonJSParams, 50, 10)
-}
-
-function unlockCollateral(){
-    var neonJSParams = [];
-
-    pushParams(neonJSParams, 'Hex', portingContractID)
-
-    invokeOperation("unlockcollateral", neonJSParams, 50, 10)
-}
-function testDecodeTimestamp(){
-    var neonJSParams = [];
-		var signableBytes = cmdArgs[5].split(",").map(v=>v.match(/.{1,2}/g).map(v=>Neon.sc.ContractParam.integer(parseInt(v, 16))))
-console.log(signableBytes[0].length)
-    pushParams(neonJSParams, 'Array', signableBytes[0])
-
-    invokeOperation("d", neonJSParams, 50, 10)
-}
-
-//testDecodeTimestamp()
-
-collatid = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-portingContractID = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa23ba2703c53263e8d6e522dc32203339dcd8eee9009e5d5e"
-//bde3f43a374db4fc45485d9ab635776529006e3c
-scriptHash = "5e36db139f5bb57c68adaf778253c92894c66d1f"
-
-//RegisterAsCollateral()
-//NewPorting()
-//challengeDeposit()
-//SaveState()
-executeChallenge();
-
-
-
-//ackUserDepositPorting()
-//unlockCollateral()
-//requestWithdraw()
+SaveState()
 //Challenge7()
 //IsSaved()
 //RemoveStorage()
-//VerifyTxOutput()
-
-//challengeWithdraw();
+//VerifyTxOutput();

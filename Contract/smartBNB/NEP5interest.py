@@ -23,12 +23,19 @@ def BigInteger(name, value):
 byte[] {name}Bytes = {num2byteArray(value)};\n\
 BigInteger {name} = {name}Bytes.AsBigInteger();\n"
 
+def generateReduceCode(it):
+    return "{" +\
+BigInteger("rateNumerator", round((BLOCK_FACTOR**(2**it))*DENOMINATOR)) +\
+f"amount = (amount * rateNumerator) / rateDenominator;\n\
+deltaTime -= magnitude;\n" +\
+"}\n"
+
 i = NUM_ITERATIONS
 code = BigInteger("rateDenominator", DENOMINATOR)
 code += BigInteger("magnitude", 2**NUM_ITERATIONS)
-code += "byte[][] rateNumeratorBytes = new byte[][] {\n"
-while i>=0:
-    code += "new byte[]"+num2byteArray(round((BLOCK_FACTOR**(2**i))*DENOMINATOR))+",\n"
+code += f"while(deltaTime >= magnitude){generateReduceCode(i)}"
+while i>=1:
     i -= 1
+    code += f"magnitude /= 2;\nif(deltaTime >= magnitude){generateReduceCode(i)}"
 
 print(code)
