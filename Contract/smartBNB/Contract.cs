@@ -700,7 +700,6 @@ namespace smartBNB
             BigInteger currentPrice = getCurrentPrice();
 
             BigInteger collateralAmountNedeed = calculateGASCollateralAmount(AmountBNB, currentPrice) + DEPOSIT_CHALLENGE; // Get the amount needed in GAS
-            Storage.Put("amountn", collateralAmountNedeed); //DEBUG
             if(calculateCollateralAmountLeft(collat, currentPrice) < collateralAmountNedeed) return new byte[0];
 
             collat.CustodiedBNB = collat.CustodiedBNB + AmountBNB;
@@ -2010,8 +2009,6 @@ namespace smartBNB
 
         private static Output decodeOutput(ulong[] bz, int ini, int len)
         {
-            Storage.Put("ini", ini);
-            Storage.Put("len", len);
             Output o = new Output();
             int[] ini_fin = new int[2];
             ini_fin[0] = ini;
