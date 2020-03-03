@@ -913,7 +913,7 @@ namespace smartBNB
             for (int i = 0; i < ids.Length; i++)
             {
                 if (Storage.Get(ids[i]).Length==0)
-					return false;
+                    return false;
             }
             return true;
         }
@@ -997,9 +997,9 @@ namespace smartBNB
             }
 
             if (txProofIndex < 0)
-                return false;//throw new Exception("Proof index cannot be negative");
+                return false; // Proof index cannot be negative
             if (txProofTotal <= 0)
-                return false;//throw new Exception("Proof total must be positive");
+                return false; // Proof total must be positive
 
             byte[] computedHash = ComputeHashFromAunts(txProofIndex, txProofTotal, txProofLeafHash, txProofAunts);
 
@@ -1017,7 +1017,7 @@ namespace smartBNB
             switch (total)
             {
                 case 0:
-                    return null;//throw new Exception("Cannot call computeHashFromAunts() with 0 total");
+                    return null; // Cannot call computeHashFromAunts() with 0 total
                 case 1:
                     if (innerHashes.Length != 0)
                         return null;
@@ -1052,7 +1052,7 @@ namespace smartBNB
         private static int GetSplitPoint(int length)
         {
             if (length < 1)
-                return 0;//throw new Exception("Trying to split a tree with size < 1");
+                return 0; // Trying to split a tree with size < 1
 
             return (length % 2 == 0) ? length / 2 : (length + 1) / 2;
         }
@@ -1644,12 +1644,12 @@ namespace smartBNB
             byte[] rawHeader = challengeVars.blockHeader;
 
             if (signature.Length!=64)
-                return false;//throw new Exception("Bad signature length");
+                return false; // Bad signature length
 
             byte[] Rs_signatureHigh = signature.Range(0, 32);
 
             if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
-                return false;//throw new Exception("Relationship between compressed and decompressed public point not found");
+                return false; // Relationship between compressed and decompressed public point not found
 
             byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
             BigInteger q = q_bytes.AsBigInteger();
@@ -1854,7 +1854,7 @@ namespace smartBNB
 
             byte[] txproof = challengeVars.txproof;
             byte[] blockHeader = challengeVars.blockHeader;
-            
+
             ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
             int[] ini_fin = new int[2];
             ini_fin[0] = (int)usignableBytes[1];
@@ -1863,12 +1863,12 @@ namespace smartBNB
             if (ini_fin[0]<0 || ini_fin[1] > usignableBytes.Length-3) return false;
 
             BigInteger headerTimestamp = decodeTimestamp(usignableBytes, ini_fin);
-            
+
             PortingContract pc = new PortingContract();
             Object p = getPortingContract(portingContractID);
             if(p==null) return false;
             pc = (PortingContract)p;
-            
+
             if (headerTimestamp < pc.LastTimestamp - CONTRACT_TIMEOUT_PORTREQUEST || headerTimestamp > pc.LastTimestamp + CONTRACT_TIMEOUT_PORTREQUEST) return false;
 
             return Validate(txproof, blockHeader);
