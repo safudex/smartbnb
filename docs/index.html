@@ -38,9 +38,8 @@
 							<h2>What it is</h2>
 						</header>
 						<div class="content">
-							<p>Essentially, smartBNB is <strong>a trustless bridge that enables Binance Chain tokens to use smart contracts in the NEO blockchain</strong>. This is achieved through a protocol that allows the porting of tokens from Binance Chain, such as BNB, to the NEO chain, without having to exchange the tokens for anything else in the process.<br><br>
-							On a lower level, it works the same way sidechains do, tokens get locked in Binance Chain, and new tokens that represent those get minted on NEO. These new tokens can then be redeemed for the original versions through an unlocking process, and in the event of any irregularity, users are always made whole through a collateral pool.</p>
-							<!--<span class="image main"><img src="images/pic02.jpg" alt="" /></span>-->
+							<p>SmartBNB is <strong>a trustless bridge that enables tokens on Binance Chain to be transferred to Neo’s blockchain and back</strong>. This enables tokens issued on Binance chain to use smart contracts in the Neo blockchain. As such, token issuers can benefit from Binance Chain’s DEX while taking advantage of Neo’s smart contracting capabilities.</p>
+							<p>Sending tokens from Binance Chain to Neo is done by locking tokens on Binance Chain, at which point the same number of tokens are minted on Neo. Once tokens are minted on Neo, they can be used for Neo-based smart contracts. User can later redeem tokens by burning them and unlocking the original tokens on Binance Chain. A collateral-based system is used to ensure that, in the event of any irregularity, users are fully compensated.</p>
 						</div>
 					</section>
 
@@ -50,10 +49,12 @@
 							<h2>How it works</h2>
 						</header>
 						<div class="content">
-							<p>smartBNB's protocol is based on <strong>fully-collateralized custodians</strong>, which are require to put down a bond of NEO tokens before they start acting as a custodian for coins on Binance Chain.<br><br>
-							These custodians will then receive and safekeep any tokens from Binance Chain that are to be ported on to NEO, locking them in their vaults and having the protocol mint new tokens on NEO to represent them. Later, these tokens on NEO can be burnt by their holders in order to retrieve the locked tokens, which the custodians will be forced to send in order to prevent loss of their collateral, which greatly exceeds the value of the custodied tokens.<br><br>
-							Because of this collateral, which is set to be around 150% of the value custodied, this protocol doesn't require any trust on the custodians, which are heavily incentivised to behave honestly and, in case they don't, the users are protected by giving them the collateral, which results in a value increase for them. Due to this, anyone can become a custodian.<br><br>
-							For more information, check out <a href="https://github.com/safudex/smartbnb/blob/master/protocol.md">our protocol specification</a>.</p>
+							<p>Like sidechains, SmartBNB system employs a lock=mint and burn=unlock system. The protocol ensures the secure locking of tokens on Binance Chain by using fully-collateralized custodians. </p>
+							<p>First, custodians have to deposit NEO tokens as collateral in a smart contract. These custodians can then receive and safekeep tokens from SmartBNB users who want to port tokens from Binance Chain to Neo. </p>
+							<p>When a user sends tokens to a custodian on Binance Chain, they are locked in the custodian’s vault. The protocol then mints new tokens on Neo to represent the locked tokens and sends them to the user. Later, users can burn their Neo-based tokens to retrieve their original tokens on Binance Chain. The custodian is forced to send these tokens back to the users, as the custodian will lose his/her collateral if this doesn’t happen. </p>
+							<p>Because of this collateral, which is set to be more than 150% of the locked tokens, the protocol is trustless. Custodians are heavily incentivized to behave honestly, as they will incur significant financial losses if they don’t.  Users are fully protected from dishonest behavior by custodians, as their collateral would be given to affected users.</p>
+							<p>Custodians are rewarded for their custodial services. Anyone can become a custodian by depositing Neo as a bond. For the first time, it is possible to receive a return on capital that is locked on the Neo blockchain.</p>
+							<p>For more information, check out <a href="https://github.com/safudex/smartbnb/blob/master/protocol.md">our protocol specification</a>.</p>
 						</div>
 					</section>
 
@@ -94,7 +95,7 @@
 							<h2>Get in touch</h2>
 						</header>
 						<div class="content">
-							<p>We love hearing from people! You can reach us over email, and, if you are around Singapore, Kuala Lumpur or Tilburg, just let us know and we could meet.</p>
+							<p>We love hearing from people! You can reach us over email, and, if you are around Singapore, Kuala Lumpur or Tilburg, just let us know and we could meet. If you are interested in using SmartBNB for your project, reach out to us!</p>
 						</div>
 						<footer>
 							<ul class="items">
@@ -111,6 +112,15 @@
 								</li>
 							</ul>
 						</footer>
+					</section>
+
+					<section>
+						<header>
+							<h2>Legal</h2>
+						</header>
+						<div class="content">
+							<p>SmartBNB has not undergone code-auditing and has been released on the test-net for testing purposes only. It is licensed under the <a href="https://github.com/safudex/smartbnb/blob/master/LICENSE">MIT license</a>.</p>
+						</div>
 					</section>
 
 				<!-- Copyright -->
