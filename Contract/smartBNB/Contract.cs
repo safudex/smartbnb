@@ -446,7 +446,7 @@ namespace smartBNB
             Object p = getPortingContract(portingContractID);
             pc = (PortingContract)p;
 
-            //if(p==null) return false;
+            if(p==null) return false;
 
             BigInteger t = Runtime.Time-pc.LastTimestamp;
             //if(t < CONTRACT_TIMEOUT_UPLOADPROOF || t > CONTRACT_TIMEOUT_UPLOADPROOF + WINDOW_CHALLENGE) return false;
@@ -462,8 +462,7 @@ namespace smartBNB
             else if(challengeNum==0x2)
             {
                 int sigNum = (int)args[2];
-                int validatorIndex = (int)args[3];
-                challengeResult = ChallengeCheckBytesV2(portingContractID, sigNum, validatorIndex);
+                challengeResult = ChallengeCheckBytesV2(portingContractID, sigNum);
             }
             else if(challengeNum==0x3)
             {
@@ -482,10 +481,9 @@ namespace smartBNB
             }
             else if(challengeNum==0x6){
                 int sigNum = (int)args[2];
-                int validatorIndex = (int)args[3];
-                int i = (int)args[4];
-                string mulid = (string)args[5];
-                challengeResult = ChallengeEdDSA_PointMul_Setp(portingContractID, sigNum, validatorIndex, i, mulid);
+                int i = (int)args[3];
+                string mulid = (string)args[4];
+                challengeResult = ChallengeEdDSA_PointMul_Setp(portingContractID, sigNum, i, mulid);
             }
             else if(challengeNum==0x7){
                 int sigNum = (int)args[2];
@@ -503,7 +501,7 @@ namespace smartBNB
                 byte[] collatID = portingContractID.Range(0, 40);
                 Collat collat = new Collat();
                 Object c = getCollatById(collatID);
-                //if(c==null) return false;
+                if(c==null) return false;
                 collat = (Collat)c;
 
                 if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEWITHDRAW)
@@ -643,7 +641,7 @@ namespace smartBNB
             if (!Runtime.CheckWitness(userAddr)) return new byte[0];
             Collat collat = new Collat();
             object c = getCollatById(collatID);
-            //if(c==null) return new byte[0];
+            if(c==null) return new byte[0];
             collat = (Collat)c;
 
             BigInteger currentPrice = 1;//getCurrentPrice();
@@ -720,7 +718,7 @@ namespace smartBNB
             Object p = getPortingContract(portingContractID);
 Storage.Put("here", "aki");
 Storage.Put("here1", portingContractID);
-            //if(p==null) return false;
+            if(p==null) return false;
 
             pc = (PortingContract)p;
             if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
@@ -888,7 +886,7 @@ Storage.Put("here1", portingContractID);
 
             PortingContract pc = new PortingContract();
             Object p = getCollatById(portingContractID);
-            //if(p==null) return false;
+            if(p==null) return false;
             pc = (PortingContract)p;
 
             byte[] addrAllowed;
@@ -1584,7 +1582,7 @@ Storage.Put("args", args.Length);
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
-            //if (o==null) return false;
+            if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             byte[] signature = challengeVars.signature[sigIndex];
             BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
@@ -1622,13 +1620,13 @@ Storage.Put("debug", "4");
             byte round = signableBytes[0];
 Storage.Put("debug", "5");
 
-            int blockHashStart = round > 0 ? 29 : 19;
+            int blockHashStart = round > 0 ? 30 : 20;
 Storage.Put("debug", "6");
 
             return (blockHash == signableBytes.Range(blockHashStart, 32));
         }
 
-        private static bool ChallengeCheckBytesV2(byte[] portingContractID, int sigIndex, int validatorIndex)
+        private static bool ChallengeCheckBytesV2(byte[] portingContractID, int sigIndex)
         {
             //[pubk0, pubk1, pubk2, ..., pubk10]
             byte[][] pubks = new byte[][] {
@@ -1647,7 +1645,7 @@ Storage.Put("debug", "6");
 
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
-            //if (o==null) return false;
+            if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
             ulong[] pre = challengeVars.pre[sigIndex];
@@ -1655,8 +1653,11 @@ Storage.Put("debug", "6");
 
             byte[] signature = challengeVars.signature[sigIndex];
             ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
+            int validatorIndex = (int)usignableBytes[3];
+
             byte[] signableBytes = ulongarr2bytearr(usignableBytes);
-            signableBytes = signableBytes.Range(3, signableBytes.Length-3);
+            signableBytes = signableBytes.Range(4, signableBytes.Length-4);
+
             byte[] Rs_signatureHigh = signature.Range(0, 32);
             byte[] hashableBytes = Rs_signatureHigh.Concat(pubks[validatorIndex]).Concat(signableBytes);
 Storage.Put("cb1", hashableBytes);
@@ -1748,7 +1749,7 @@ Storage.Put("cb2", preBytes);
             return point_equal(sB, EdDSA_PointAdd(R, hA, p, byteD.AsBigInteger()), p);
         }
 
-        private static bool ChallengeEdDSA_PointMul_Setp(byte[] portingContractID, int sigIndex, int validatorIndex, int i, string mulid)
+        private static bool ChallengeEdDSA_PointMul_Setp(byte[] portingContractID, int sigIndex, int i, string mulid)
         {
             //[X0, Y0, X0Y0%P, X1, Y1, X1Y1%P, ...]
             byte[][] pubksDecompressed = new byte[][] {
@@ -1805,8 +1806,10 @@ Storage.Put("cb2", preBytes);
             {
                 GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
                 Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
-                //if (o==null) return false;
+                if (o==null) return false;
                 challengeVars = (GeneralChallengeVariables)o;
+                ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
+                int validatorIndex = (int)usignableBytes[3];
 
                 initialStep.Q = new BigInteger[]{ 0, 1, 1, 0 };
 
@@ -1886,7 +1889,7 @@ Storage.Put("cb2", preBytes);
             ini_fin[0] = (int)usignableBytes[1];
             ini_fin[1] = (int)usignableBytes[2];
 
-            if (ini_fin[0]<0 || ini_fin[1] > usignableBytes.Length-3) return false;
+            if (ini_fin[0]<0 || ini_fin[1] > usignableBytes.Length-4) return false;
 
             BigInteger headerTimestamp = decodeTimestamp(usignableBytes, ini_fin);
 
@@ -2117,7 +2120,7 @@ Storage.Put("cb2", preBytes);
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
-            //if (o==null) return false;
+            if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             ulong[] txb = challengeVars.txBytes;
 
@@ -2178,7 +2181,7 @@ Storage.Put("cb2", preBytes);
             int pcidlen = portingContractID.Length-1;
 			portingContractID = portingContractID.Range(0, pcidlen);
             Object p = getPortingContract(portingContractID);
-            //if(p==null) return false;
+            if(p==null) return false;
             pc = (PortingContract)p;
 
             BigInteger amount = pc.AmountBNB;

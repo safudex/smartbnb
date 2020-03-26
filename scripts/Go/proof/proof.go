@@ -46,6 +46,7 @@ type voteData struct {
 func createVote(vd voteData) *v.Vote {
 	stamp := vd.timestamp
 	fmt.Println("stamp", stamp)
+	fmt.Println("index", vd.validatorIndex)
 	return &v.Vote{
 		Type:      v.SignedMsgType(byte(v.PrecommitType)),
 		Height:    vd.height,
@@ -59,17 +60,18 @@ func createVote(vd voteData) *v.Vote {
 			},
 		},
 		ValidatorAddress: vd.validatorAddr,
-		ValidatorIndex:   0,
+		ValidatorIndex:   vd.validatorIndex,
 	}
 }
 
 func VoteSignableHexBytes(vd voteData) string {
 	vote := createPrecommit(vd)
 	signBytes := vote.SignBytes("Binance-Chain-Tigris")
-	timeStart := 91
+	timeStart := 92
 	if vd.round > 0 {
-		timeStart = 101
+		timeStart = 102
 	}
+	signBytes = append([]byte{byte(vd.validatorIndex)}, signBytes...)
 	signBytes = append([]byte{byte(timeStart+5)}, signBytes...)
 	signBytes = append([]byte{byte(timeStart)}, signBytes...)
 	signBytes = append([]byte{byte(vd.round)}, signBytes...)
