@@ -373,7 +373,7 @@ func GetProof(txHash string) SPV {
 
 		sig = hex.EncodeToString(s[i].Signature)
 		msg = hex.EncodeToString(s[i].Signature[:32])
-		msg = msg + pubks[i] + sBytes[6:]
+		msg = msg + pubks[i] + sBytes[8:]
 		pre := GetPreprocessedMsg(msg)
 		preHash, preHashMod, s_int, sb, ha := GetSbHa(msg, sig, pubks[i])
 		pres += pre
