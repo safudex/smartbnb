@@ -903,12 +903,8 @@ namespace smartBNB
             portingContractID = portingContractID.Concat(new byte[]{STG_FLAG});
 
             if (Runtime.CheckWitness(addrAllowed))
-            {
-                if (args.Length==11)
-                    return saveStateToStorage(STG_GENERAL, portingContractID, args);
-                else if (args.Length == 4)
-                    return saveStateToStorage(STG_POINTMUL, portingContractID, args);
-            }
+                return saveStateToStorage(portingContractID, args);
+
             return false;
         }
 
@@ -1256,7 +1252,7 @@ namespace smartBNB
               "abc"
               */
 
-            if (pre.Length==0 || pre.Length%8!=0) return null;
+            if (pre.Length==0 || pre.Length%8!=0) return null;//TODO LEN
 
             //constants
             ulong[] K = new ulong[80];
@@ -1496,9 +1492,9 @@ namespace smartBNB
             return BytesToObject(stg);
         }
 
-        private static bool saveStateToStorage(byte state, byte[] stg_key, params object[] args)
+        private static bool saveStateToStorage(byte[] stg_key, params object[] args)
         {
-            if(state == STG_GENERAL)
+            if (args.Length==11)
             {
                 GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
                 challengeVars.signature = (byte[][])args[1];
@@ -1534,7 +1530,7 @@ namespace smartBNB
                 Storage.Put(stg_key, ObjectToBytes(challengeVars));
                 return true;
             }
-            else if(state == STG_POINTMUL)
+            else if (args.Length == 4)
             {
                 byte[] pointMulID = ((string)args[2]).AsByteArray();
                 stg_key = stg_key.Concat(pointMulID);
@@ -1595,33 +1591,25 @@ namespace smartBNB
                 return false; // Bad signature length
 
             byte[] Rs_signatureHigh = signature.Range(0, 32);
-Storage.Put("s", signature);
+
             BigInteger p = byteP.AsBigInteger();
-            Storage.Put("d1", p);
-            Storage.Put("d2", R0_xSigHigh);
-            Storage.Put("d3", R1_ySigHigh);
-            Storage.Put("d4", Rs_signatureHigh);
+
             if (!checkCompressed(R0_xSigHigh, R1_ySigHigh, Rs_signatureHigh, p))
                 return false; // Relationship between compressed and decompressed public point not found
-Storage.Put("debug", "1");
+
             byte[] q_bytes = {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
             BigInteger q = q_bytes.AsBigInteger();
-Storage.Put("debug", "2");
 
             byte[] s_signatureLow = signature.Range(32, 32);
             BigInteger s = s_signatureLow.AsBigInteger();
             if (s>=q || s<0)
                 return false;
-Storage.Put("debug", "3");
 
             byte[] blockHash = HashRawHeader(rawHeader);
-Storage.Put("debug", "4");
 
             byte round = signableBytes[0];
-Storage.Put("debug", "5");
 
             int blockHashStart = round > 0 ? 30 : 20;
-Storage.Put("debug", "6");
 
             return (blockHash == signableBytes.Range(blockHashStart, 32));
         }
@@ -1649,7 +1637,6 @@ Storage.Put("debug", "6");
             challengeVars = (GeneralChallengeVariables)o;
 
             ulong[] pre = challengeVars.pre[sigIndex];
-            if (pre.Length==0 || pre.Length%8!=0) return false;
 
             byte[] signature = challengeVars.signature[sigIndex];
             ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
@@ -1662,6 +1649,8 @@ Storage.Put("debug", "6");
             byte[] hashableBytes = Rs_signatureHigh.Concat(pubks[validatorIndex]).Concat(signableBytes);
 
             byte[] preBytes = ObjectToBytes(pre);
+
+            if(preBytes.Length <= hashableBytes.Length) return false;
 
             return CheckBytesv2(preBytes, hashableBytes);
         }
@@ -1714,10 +1703,6 @@ Storage.Put("debug", "6");
             string bs_ha = "ha"+((BigInteger)(iarr+48)).AsByteArray().AsString();
             string Qbs = "Qs_"+bs_sb;
             BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
-
-            /*Object o = getStateFromStorage(STG_POINTMUL, collatId, txHash, Qbs);
-              if (o==null) return false;
-              BigInteger[][] Qssb = (BigInteger[][])o;*/
 
             Qbs = "Qs_"+bs_ha;
             BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
@@ -1905,7 +1890,10 @@ Storage.Put("debug", "6");
             while(ipreB < preBytes.Length)
             {
                 ipreB += len+2;
+                if (ipreB >= preBytes.Length) return false;
                 len = preBytes[ipreB];
+                if (ipreB+len >= preBytes.Length) return false;
+                if (len>10) return false;
 
                 if (len==0)
                     continue;
@@ -1913,6 +1901,7 @@ Storage.Put("debug", "6");
                 if(!end){
                     for (int j = 0; j<(8-len); j++)
                     {
+                        if (bytes.Length < ib) return false;
                         if (bytes[ib] != 0)
                         {
                             return false;
@@ -1924,13 +1913,12 @@ Storage.Put("debug", "6");
                         if(i > 8)
                             if(preBytes[ipreB+i] == 0)
                                 continue;
-                            else{
+                            else
                                 return false;
-                            }
 
                         if(ib == bytes.Length && preBytes[ipreB+i] == END_HASHABLEBYTES[0])
                             end = true;
-                        else if (!end && preBytes[ipreB+i] != bytes[ib])
+                        else if (!end && ib < bytes.Length && preBytes[ipreB+i] != bytes[ib])
                             return false;
                         else if (end && preBytes[ipreB+i] != 0)
                             return false;
