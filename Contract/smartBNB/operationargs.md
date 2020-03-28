@@ -4,17 +4,17 @@
 General state
 index|arg|info
 -|-|-
-0|`byte[] portingContractID`|Id
-1|`byte[][] signatures`|
-2|`bigint[] xs `|Decompressed signature x
-3|`bigint[] ys`|Decompressed signature y
+0|`byte[] portingContractID`|Id.
+1|`byte[][] signatures`|Array of signatures.
+2|`bigint[] xs `|Decompressed signature x. `[sig0_x, sig1_x...]`
+3|`bigint[] ys`|Decompressed signature y. `[sig0_y, sig_y...]`
 4|`byte[][] signablebytes`
 5|`ulong[][] pres`
 6|`ulong[][] preshash`
 7|`bigint[] preshashmod`
 8|`byte[] txproof`
-9|`byte[] blockHeader`
-10|`byte[] txBytes`
+9|`byte[] blockHeader`|Header data cdc encoded. `len(cdcVersion) + cdcVersion + len(cdcChainID) + cdcChainID + ... + len(cdcProposerAddress) + cdcProposerAddress`
+10|`byte[] txBytes`|Amino encoded transaction.
 
 Pointmul state
 index|arg|info
