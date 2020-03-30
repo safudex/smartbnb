@@ -39,7 +39,7 @@ namespace smartBNB
 
         private static readonly byte STG_GENERAL = 0x01;
         private static readonly byte STG_POINTMUL = 0x02;
-        private static readonly byte STG_FLAG = 0x01;
+        private static readonly byte[] STG_FLAG = { 0x01 };
 
         // Hardcoded, object type prefix in transfer transaction
         private static readonly byte[] TX_TRANSFER_PREFIX = {0x2A, 0x2C, 0x87, 0xFA};
@@ -433,7 +433,7 @@ namespace smartBNB
             BigInteger t = Runtime.Time-pc.LastTimestamp;
             //if(t < CONTRACT_TIMEOUT_UPLOADPROOF || t > CONTRACT_TIMEOUT_UPLOADPROOF + WINDOW_CHALLENGE) return false;
 
-            portingContractID = portingContractID.Concat(new byte[]{STG_FLAG});
+            portingContractID = portingContractID.Concat(STG_FLAG);
 
             bool challengeResult = true;
             if(challengeNum==0x1)
@@ -481,11 +481,6 @@ namespace smartBNB
             if (!challengeResult)
             {
                 byte[] collatID = portingContractID.Range(0, 40);
-
-                /*Collat collat = new Collat();
-                Object c = getCollatById(collatID);
-                if(c==null) return false;
-                collat = (Collat)c;*/
                 
                 Collat collat = new Collat();
                 collat = getCollatById(collatID);
@@ -859,12 +854,7 @@ namespace smartBNB
 
         private static bool proofIsSaved(byte[] portingContractID)
         {
-            /*PortingContract pc = new PortingContract();
-            Object p = getCollatById(portingContractID);
-            if(p==null) return false;
-            pc = (PortingContract)p;*/
-
-            portingContractID = portingContractID.Concat(new byte[]{STG_FLAG});
+            portingContractID = portingContractID.Concat(STG_FLAG);
 
             string[] ss = {"", "Ps_ha0", "Ps_ha1", "ss_ha0", "ss_ha1", "Qs_ha0", "Qs_ha1", "Ps_sb0", "Ps_sb1", "ss_sb0", "Qs_sb0", "ss_sb1", "Qs_sb1"};
             byte[][] ids = new byte[ss.Length][];
@@ -900,7 +890,7 @@ namespace smartBNB
             else
                 return false;
 
-            portingContractID = portingContractID.Concat(new byte[]{STG_FLAG});
+            portingContractID = portingContractID.Concat(STG_FLAG);
 
             if (Runtime.CheckWitness(addrAllowed))
                 return saveStateToStorage(portingContractID, args);
@@ -1701,16 +1691,20 @@ namespace smartBNB
             int iarr = (iint+sigIndex*32)/slicesLen; 
             string bs_sb = "sb"+((BigInteger)(iarr+48)).AsByteArray().AsString();
             string bs_ha = "ha"+((BigInteger)(iarr+48)).AsByteArray().AsString();
+            
             string Qbs = "Qs_"+bs_sb;
             BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
-
+            if(Qssb.Length==0) return false;
+            
             Qbs = "Qs_"+bs_ha;
             BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
+            if(Qsha.Length==0) return false;
+
             BigInteger[] sB = Qssb[istep];
             BigInteger[] hA = Qsha[istep];
 
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
+            Object o = getStateFromStorage(STG_GENERAL, portingContractID.Take(portingContractID.Length-1), null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
