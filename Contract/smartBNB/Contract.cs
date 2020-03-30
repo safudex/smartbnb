@@ -439,43 +439,50 @@ namespace smartBNB
             if(challengeNum==0x1)
             {
                 int sigNum = (int)args[2];
+                if(sigNum>=8) return false;
                 challengeResult = ChallengeInitialChecks(stg_key, sigNum);
             }
             else if(challengeNum==0x2)
             {
                 int sigNum = (int)args[2];
+                if(sigNum>=8) return false;
                 challengeResult = ChallengeCheckBytesV2(stg_key, sigNum);
             }
             else if(challengeNum==0x3)
             {
                 int sigNum = (int)args[2];
+                if(sigNum>=8) return false;
                 challengeResult = ChallengeSha512(stg_key, sigNum);
             }
             else if(challengeNum==0x4)
             {
                 int sigNum = (int)args[2];
+                if(sigNum>=8) return false;
                 challengeResult = ChallengeSha512ModQ(stg_key, sigNum);
             }
             else if(challengeNum==0x5)
             {
                 int sigNum = (int)args[2];
+                if(sigNum>=8) return false;
                 challengeResult = ChallengePointEqual(stg_key, sigNum);
             }
             else if(challengeNum==0x6){
                 int sigNum = (int)args[2];
+                if(sigNum>=8) return false;
                 int i = (int)args[3];
                 string mulid = (string)args[4];
                 challengeResult = ChallengeEdDSA_PointMul_Setp(stg_key, sigNum, i, mulid);
             }
             else if(challengeNum==0x7){
                 int sigNum = (int)args[2];
+                if(sigNum>=8) return false;
                 challengeResult = ChallengeTxProof(stg_key, sigNum);
             }
             else if (challengeNum==0x8){
                 challengeResult = ChallengeTxData(stg_key);
             }
             else if (challengeNum==0x9){
-                challengeResult = proofIsSaved(stg_key);
+                challengeResult = isProofSaved(stg_key);
             }
             
             if (!challengeResult)
@@ -837,7 +844,7 @@ namespace smartBNB
             return (a>b)? b : a;
         }
 
-        private static bool proofIsSaved(byte[] portingContractID)
+        private static bool isProofSaved(byte[] portingContractID)
         {
             portingContractID = portingContractID.Concat(STG_FLAG);
 
@@ -1227,7 +1234,7 @@ namespace smartBNB
               "abc"
               */
 
-            if (pre.Length==0 || pre.Length%8!=0) return null;//TODO LEN
+            if (pre.Length==0 || pre.Length%16!=0 || pre.Length > ) return null;//TODO LEN
 
             //constants
             ulong[] K = new ulong[80];
@@ -1473,28 +1480,28 @@ namespace smartBNB
             {
                 GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
                 challengeVars.signature = (byte[][])args[1];
-                if (challengeVars.signature.Length!=8) return false;//TODO LEN
+                if (challengeVars.signature.Length!=8) return false;
 
                 challengeVars.xs = (BigInteger[])args[2];
-                if (challengeVars.xs.Length!=8) return false;//TODO LEN
+                if (challengeVars.xs.Length!=8) return false;
 
                 challengeVars.ys = (BigInteger[])args[3];
-                if (challengeVars.ys.Length!=8) return false;//TODO LEN
+                if (challengeVars.ys.Length!=8) return false;
 
                 challengeVars.signableBytes = (ulong[][])args[4];
-                if (challengeVars.signableBytes.Length!=8) return false;//TODO LEN
+                if (challengeVars.signableBytes.Length!=8 || challengeVars.signableBytes.Length>1500) return false;
 
                 challengeVars.pre = (ulong[][])args[5];
-                if (challengeVars.pre.Length!=8) return false;//TODO LEN
+                if (challengeVars.pre.Length!=8) return false;
 
                 challengeVars.preHash = (ulong[][])args[6];
-                if (challengeVars.preHash.Length!=8) return false;//TODO LEN
+                if (challengeVars.preHash.Length!=8) return false;
 
                 challengeVars.preHashMod = (BigInteger[])args[7];
-                if (challengeVars.preHashMod.Length!=8) return false;//TODO LEN
+                if (challengeVars.preHashMod.Length!=8) return false;
 
                 challengeVars.txproof = (byte[])args[8];
-                if (challengeVars.txproof.Length==0) return false;//TODO VALORAR MAX LENGTH
+                if (challengeVars.txproof.Length>500) return false;
 
                 challengeVars.blockHeader = (byte[])args[9];
                 if (challengeVars.blockHeader.Length==0 || challengeVars.blockHeader.Length > 400) return false;
@@ -1555,6 +1562,7 @@ namespace smartBNB
             Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
+
             byte[] signature = challengeVars.signature[sigIndex];
             BigInteger R0_xSigHigh = challengeVars.xs[sigIndex];
             BigInteger R1_ySigHigh = challengeVars.ys[sigIndex];
@@ -1562,6 +1570,7 @@ namespace smartBNB
             byte[] signableBytes = ulongarr2bytearr(usignableBytes);
             byte[] rawHeader = challengeVars.blockHeader;
 
+            if (signableBytes.Length==0) return false;
             if (signature.Length!=64)
                 return false; // Bad signature length
 
@@ -1581,6 +1590,7 @@ namespace smartBNB
                 return false;
 
             byte[] blockHash = HashRawHeader(rawHeader);
+            if(blockHash == null) return false;
 
             byte round = signableBytes[0];
 
@@ -1616,6 +1626,7 @@ namespace smartBNB
             byte[] signature = challengeVars.signature[sigIndex];
             ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
             int validatorIndex = (int)usignableBytes[3];
+            if (validatorIndex>=11) return false;
 
             byte[] signableBytes = ulongarr2bytearr(usignableBytes);
             signableBytes = signableBytes.Range(4, signableBytes.Length-4);
@@ -1705,6 +1716,9 @@ namespace smartBNB
 
         private static bool ChallengeEdDSA_PointMul_Setp(byte[] stg_key, int sigIndex, int i, string mulid)
         {
+
+            if ( i<0 || i>31 ) return false;//TODO: ASEGURARSE DE 31 MABYBE 32
+
             //[X0, Y0, X0Y0%P, X1, Y1, X1Y1%P, ...]
             byte[][] pubksDecompressed = new byte[][] {
                 new byte[] {0x6b, 0xef, 0x5e, 0xac, 0x02, 0xc3, 0x50, 0x83, 0x30, 0x3a, 0xf1, 0x52, 0xbb, 0xa1, 0xda, 0x6d, 0x41, 0xe4, 0xda, 0xfe, 0xa9, 0x2d, 0x9e, 0x3a, 0x78, 0x8f, 0x6a, 0x57, 0x12, 0xc7, 0x5e, 0x0d},
@@ -1748,10 +1762,13 @@ namespace smartBNB
 
             string Pbs = "Ps_"+bs;
             BigInteger[][] Ps = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Pbs);
+            if(Ps.Length==0) return false;
             string Qbs = "Qs_"+bs;
             BigInteger[][] Qs = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Qbs);
+            if(Qs.Length==0) return false;
             string sbs = "ss_"+bs;
             BigInteger[] ss = (BigInteger[])getStateFromStorage(STG_POINTMUL, stg_key, sbs);
+            if(ss.Length==0) return false;
 
             PointMulStep initialStep = new PointMulStep();
             PointMulStep expectedStep = new PointMulStep();
@@ -1763,7 +1780,9 @@ namespace smartBNB
                 if (o==null) return false;
                 challengeVars = (GeneralChallengeVariables)o;
                 ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
+                if(usignableBytes.Length<4) return false;
                 int validatorIndex = (int)usignableBytes[3];
+                if (validatorIndex>=11) return false;
 
                 initialStep.Q = new BigInteger[]{ 0, 1, 1, 0 };
 
@@ -1839,6 +1858,7 @@ namespace smartBNB
             byte[] blockHeader = challengeVars.blockHeader;
 
             ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
+            if(usignableBytes.Length<3) return false;
             int[] ini_fin = new int[2];
             ini_fin[0] = (int)usignableBytes[1];
             ini_fin[1] = (int)usignableBytes[2];
@@ -1938,6 +1958,8 @@ namespace smartBNB
 
         private static ulong[] Uvarint(ulong [] bz, int[] ini_fin)
         {
+            if (ini_fin[1]-ini_fin[0]+1<bz.Length) return new ulong[]{0, 0};
+
             ulong x=0;
             int s=0;
             ulong b=0;
@@ -2115,12 +2137,7 @@ namespace smartBNB
             pc = getPortingContract(portingContractID);
             if(pc.ContractStatus == CONTRACT_STATUS_NULL) return false;
 
-            for (int i=0; i<20; i++)
-            {
-                if (output.addr[i]!=pc.BCNAddr[i]) return false;
-            }
-
-            if (pc.AmountBNB != output.amount || output.denom != pc.denom)
+            if (output.addr != pc.BCNAddr || pc.AmountBNB != output.amount || output.denom != pc.denom)
                 return false;
 
             return (txProofLeafHash == getLeafHashByTxBytes(bytestx.Take(txb.Length-2)));
