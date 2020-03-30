@@ -433,49 +433,49 @@ namespace smartBNB
             BigInteger t = Runtime.Time-pc.LastTimestamp;
             //if(t < CONTRACT_TIMEOUT_UPLOADPROOF || t > CONTRACT_TIMEOUT_UPLOADPROOF + WINDOW_CHALLENGE) return false;
 
-            portingContractID = portingContractID.Concat(STG_FLAG);
+            byte[] stg_key = portingContractID.Concat(STG_FLAG);
 
             bool challengeResult = true;
             if(challengeNum==0x1)
             {
                 int sigNum = (int)args[2];
-                challengeResult = ChallengeInitialChecks(portingContractID, sigNum);
+                challengeResult = ChallengeInitialChecks(stg_key, sigNum);
             }
             else if(challengeNum==0x2)
             {
                 int sigNum = (int)args[2];
-                challengeResult = ChallengeCheckBytesV2(portingContractID, sigNum);
+                challengeResult = ChallengeCheckBytesV2(stg_key, sigNum);
             }
             else if(challengeNum==0x3)
             {
                 int sigNum = (int)args[2];
-                challengeResult = ChallengeSha512(portingContractID, sigNum);
+                challengeResult = ChallengeSha512(stg_key, sigNum);
             }
             else if(challengeNum==0x4)
             {
                 int sigNum = (int)args[2];
-                challengeResult = ChallengeSha512ModQ(portingContractID, sigNum);
+                challengeResult = ChallengeSha512ModQ(stg_key, sigNum);
             }
             else if(challengeNum==0x5)
             {
                 int sigNum = (int)args[2];
-                challengeResult = ChallengePointEqual(portingContractID, sigNum);
+                challengeResult = ChallengePointEqual(stg_key, sigNum);
             }
             else if(challengeNum==0x6){
                 int sigNum = (int)args[2];
                 int i = (int)args[3];
                 string mulid = (string)args[4];
-                challengeResult = ChallengeEdDSA_PointMul_Setp(portingContractID, sigNum, i, mulid);
+                challengeResult = ChallengeEdDSA_PointMul_Setp(stg_key, sigNum, i, mulid);
             }
             else if(challengeNum==0x7){
                 int sigNum = (int)args[2];
-                challengeResult = ChallengeTxProof(portingContractID, sigNum);
+                challengeResult = ChallengeTxProof(stg_key, sigNum);
             }
             else if (challengeNum==0x8){
-                challengeResult = ChallengeTxData(portingContractID);
+                challengeResult = ChallengeTxData(stg_key);
             }
             else if (challengeNum==0x9){
-                challengeResult = proofIsSaved(portingContractID);
+                challengeResult = proofIsSaved(stg_key);
             }
             
             if (!challengeResult)
@@ -659,19 +659,9 @@ namespace smartBNB
 
             byte[] collatID = portingContractID.Range(0, 40);
 
-            /*Collat collat = new Collat();
-            Object c = getCollatById(collatID);
-            if(c==null) return false;
-            collat = (Collat)c;*/
-
             Collat collat = new Collat();
             collat = getCollatById(collatID);
             if (collat.Address.Length == 0) return false;
-
-            /*PortingContract pc = new PortingContract();
-            Object p = getPortingContract(portingContractID);
-            if(p==null) return false;
-            pc = (PortingContract)p;*/
 
             PortingContract pc = new PortingContract();
             pc = getPortingContract(portingContractID);
@@ -725,11 +715,6 @@ namespace smartBNB
 
         private static bool ChallengeWithdraw(byte[] portingContractID)
         {
-            /*PortingContract pc = new PortingContract();
-            Object p = getPortingContract(portingContractID);
-            if(p==null) return false;
-            pc = (PortingContract)p;*/
-
             PortingContract pc = new PortingContract();
             pc = getPortingContract(portingContractID);
             if(pc.ContractStatus == CONTRACT_STATUS_NULL) return false;
@@ -890,10 +875,10 @@ namespace smartBNB
             else
                 return false;
 
-            portingContractID = portingContractID.Concat(STG_FLAG);
+            byte[] stg_key = portingContractID.Concat(STG_FLAG);
 
             if (Runtime.CheckWitness(addrAllowed))
-                return saveStateToStorage(portingContractID, args);
+                return saveStateToStorage(stg_key, args);
 
             return false;
         }
@@ -1564,10 +1549,10 @@ namespace smartBNB
             return dest;
         }
 
-        private static bool ChallengeInitialChecks(byte[] portingContractID, int sigIndex)
+        private static bool ChallengeInitialChecks(byte[] stg_key, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
+            Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             byte[] signature = challengeVars.signature[sigIndex];
@@ -1604,7 +1589,7 @@ namespace smartBNB
             return (blockHash == signableBytes.Range(blockHashStart, 32));
         }
 
-        private static bool ChallengeCheckBytesV2(byte[] portingContractID, int sigIndex)
+        private static bool ChallengeCheckBytesV2(byte[] stg_key, int sigIndex)
         {
             //[pubk0, pubk1, pubk2, ..., pubk10]
             byte[][] pubks = new byte[][] {
@@ -1622,7 +1607,7 @@ namespace smartBNB
             };
 
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
+            Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
@@ -1645,10 +1630,10 @@ namespace smartBNB
             return CheckBytesv2(preBytes, hashableBytes);
         }
 
-        private static bool ChallengeSha512(byte[] portingContractID, int sigIndex)
+        private static bool ChallengeSha512(byte[] stg_key, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
+            Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
@@ -1669,10 +1654,10 @@ namespace smartBNB
             return false;
         }
 
-        private static bool ChallengeSha512ModQ(byte[] portingContractID, int sigIndex)
+        private static bool ChallengeSha512ModQ(byte[] stg_key, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
+            Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
@@ -1684,7 +1669,7 @@ namespace smartBNB
             return (expectedMod==mod);
         }
 
-        private static bool ChallengePointEqual(byte[] portingContractID, int sigIndex)
+        private static bool ChallengePointEqual(byte[] stg_key, int sigIndex)
         {
             int iint = 31;
             int istep = (sigIndex*32+iint)%slicesLen;
@@ -1693,18 +1678,18 @@ namespace smartBNB
             string bs_ha = "ha"+((BigInteger)(iarr+48)).AsByteArray().AsString();
             
             string Qbs = "Qs_"+bs_sb;
-            BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
+            BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Qbs);
             if(Qssb.Length==0) return false;
             
             Qbs = "Qs_"+bs_ha;
-            BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
+            BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Qbs);
             if(Qsha.Length==0) return false;
 
             BigInteger[] sB = Qssb[istep];
             BigInteger[] hA = Qsha[istep];
 
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, portingContractID.Take(portingContractID.Length-1), null);
+            Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
@@ -1718,7 +1703,7 @@ namespace smartBNB
             return point_equal(sB, EdDSA_PointAdd(R, hA, p, byteD.AsBigInteger()), p);
         }
 
-        private static bool ChallengeEdDSA_PointMul_Setp(byte[] portingContractID, int sigIndex, int i, string mulid)
+        private static bool ChallengeEdDSA_PointMul_Setp(byte[] stg_key, int sigIndex, int i, string mulid)
         {
             //[X0, Y0, X0Y0%P, X1, Y1, X1Y1%P, ...]
             byte[][] pubksDecompressed = new byte[][] {
@@ -1762,11 +1747,11 @@ namespace smartBNB
             string bs = mulid+((BigInteger)(iarr+48)).AsByteArray().AsString();
 
             string Pbs = "Ps_"+bs;
-            BigInteger[][] Ps = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Pbs);
+            BigInteger[][] Ps = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Pbs);
             string Qbs = "Qs_"+bs;
-            BigInteger[][] Qs = (BigInteger[][])getStateFromStorage(STG_POINTMUL, portingContractID, Qbs);
+            BigInteger[][] Qs = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Qbs);
             string sbs = "ss_"+bs;
-            BigInteger[] ss = (BigInteger[])getStateFromStorage(STG_POINTMUL, portingContractID, sbs);
+            BigInteger[] ss = (BigInteger[])getStateFromStorage(STG_POINTMUL, stg_key, sbs);
 
             PointMulStep initialStep = new PointMulStep();
             PointMulStep expectedStep = new PointMulStep();
@@ -1774,7 +1759,7 @@ namespace smartBNB
             if (modPositive(istep,32)-32==-1)
             {
                 GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-                Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
+                Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
                 if (o==null) return false;
                 challengeVars = (GeneralChallengeVariables)o;
                 ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
@@ -1843,10 +1828,10 @@ namespace smartBNB
                 return false;
         }
 
-        private static bool ChallengeTxProof(byte[] portingContractID, int sigIndex)
+        private static bool ChallengeTxProof(byte[] stg_key, int sigIndex)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
+            Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
@@ -1863,7 +1848,7 @@ namespace smartBNB
             BigInteger headerTimestamp = decodeTimestamp(usignableBytes, ini_fin);
 
             PortingContract pc = new PortingContract();
-            pc = getPortingContract(portingContractID);
+            pc = getPortingContract(stg_key.Take(stg_key.Length-1));
             if(pc.ContractStatus == CONTRACT_STATUS_NULL) return false;
 
             if (headerTimestamp < pc.LastTimestamp - CONTRACT_TIMEOUT_PORTREQUEST || headerTimestamp > pc.LastTimestamp + CONTRACT_TIMEOUT_PORTREQUEST) return false;
@@ -2063,10 +2048,10 @@ namespace smartBNB
             return o;
         }
 
-        private static bool ChallengeTxData(byte[] portingContractID)
+        private static bool ChallengeTxData(byte[] stg_key)
         {
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
-            Object o = getStateFromStorage(STG_GENERAL, portingContractID, null);
+            Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
             ulong[] txb = challengeVars.txBytes;
@@ -2119,13 +2104,12 @@ namespace smartBNB
 
             byte[] txProofLeafHash = challengeVars.txproof.Range(0, 32);
 
-            return CheckTxData(portingContractID, output, txProofLeafHash, bytestx, txb);
+            return CheckTxData(stg_key, output, txProofLeafHash, bytestx, txb);
         }
 
-        private static bool CheckTxData(byte[] portingContractID, Output output, byte[] txProofLeafHash, byte[] bytestx, ulong[] txb)
+        private static bool CheckTxData(byte[] stg_key, Output output, byte[] txProofLeafHash, byte[] bytestx, ulong[] txb)
         {
-            int pcidlen = portingContractID.Length-1;
-			portingContractID = portingContractID.Range(0, pcidlen);
+			byte[] portingContractID = stg_key.Take(stg_key.Length-1);
 
             PortingContract pc = new PortingContract();
             pc = getPortingContract(portingContractID);
