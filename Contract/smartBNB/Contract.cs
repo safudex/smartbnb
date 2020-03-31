@@ -628,6 +628,8 @@ namespace smartBNB
         {
             if (!Runtime.CheckWitness(userAddr)) return new byte[0];
 
+            if (AmountBNB <= 0) throw new Exception("The parameter amount MUST be greater than 0.");
+
             Collat collat = new Collat();
             collat = getCollatById(collatID);
             if (collat.Address.Length == 0) return new byte[0];
