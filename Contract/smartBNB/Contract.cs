@@ -1015,6 +1015,9 @@ namespace smartBNB
         private static byte[][] TakeArrays(byte[][] arr, int ini, int fin)
         {
             int len = (fin - ini)+1;
+            
+            if (len >= arr.Length || len <= 0) return new byte[0][];
+
             byte[][] cutted = new byte[len][];
             for (int i = 0; i < len; i++)
             {
@@ -1236,7 +1239,7 @@ namespace smartBNB
               "abc"
               */
 
-            if (pre.Length==0 || pre.Length%16!=0 || pre.Length > ) return null;//TODO LEN
+            if (pre.Length==0 || pre.Length%16!=0) return null;//TODO LEN
 
             //constants
             ulong[] K = new ulong[80];
@@ -1492,6 +1495,8 @@ namespace smartBNB
 
                 challengeVars.signableBytes = (ulong[][])args[4];
                 if (challengeVars.signableBytes.Length!=8 || challengeVars.signableBytes.Length>1500) return false;
+                for (int i = 0; i<8; i++)
+                    if (challengeVars.signableBytes[i].Length < 4) return false;
 
                 challengeVars.pre = (ulong[][])args[5];
                 if (challengeVars.pre.Length!=8) return false;
@@ -1560,6 +1565,8 @@ namespace smartBNB
 
         private static bool ChallengeInitialChecks(byte[] stg_key, int sigIndex)
         {
+            if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
+
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
@@ -1572,7 +1579,6 @@ namespace smartBNB
             byte[] signableBytes = ulongarr2bytearr(usignableBytes);
             byte[] rawHeader = challengeVars.blockHeader;
 
-            if (signableBytes.Length==0) return false;
             if (signature.Length!=64)
                 return false; // Bad signature length
 
@@ -1603,6 +1609,8 @@ namespace smartBNB
 
         private static bool ChallengeCheckBytesV2(byte[] stg_key, int sigIndex)
         {
+            if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
+
             //[pubk0, pubk1, pubk2, ..., pubk10]
             byte[][] pubks = new byte[][] {
                 new byte[]{0xd3, 0x76, 0x9d, 0x8a, 0x1f, 0x78, 0xb4, 0xc1, 0x7a, 0x96, 0x5f, 0x7a, 0x30, 0xd4, 0x18, 0x1f, 0xab, 0xbd, 0x1f, 0x96, 0x9f, 0x46, 0xd3, 0xc8, 0xe8, 0x3b, 0x5a, 0xd4, 0x84, 0x54, 0x21, 0xd8},
@@ -1645,6 +1653,8 @@ namespace smartBNB
 
         private static bool ChallengeSha512(byte[] stg_key, int sigIndex)
         {
+            if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
+
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
@@ -1669,6 +1679,8 @@ namespace smartBNB
 
         private static bool ChallengeSha512ModQ(byte[] stg_key, int sigIndex)
         {
+            if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
+
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
@@ -1684,6 +1696,8 @@ namespace smartBNB
 
         private static bool ChallengePointEqual(byte[] stg_key, int sigIndex)
         {
+            if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
+
             int iint = 31;
             int istep = (sigIndex*32+iint)%slicesLen;
             int iarr = (iint+sigIndex*32)/slicesLen; 
@@ -1692,11 +1706,9 @@ namespace smartBNB
             
             string Qbs = "Qs_"+bs_sb;
             BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Qbs);
-            if(Qssb.Length==0) return false;
             
             Qbs = "Qs_"+bs_ha;
             BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Qbs);
-            if(Qsha.Length==0) return false;
 
             BigInteger[] sB = Qssb[istep];
             BigInteger[] hA = Qsha[istep];
@@ -1718,8 +1730,8 @@ namespace smartBNB
 
         private static bool ChallengeEdDSA_PointMul_Setp(byte[] stg_key, int sigIndex, int i, string mulid)
         {
-
-            if ( i<0 || i>31 ) return false;//TODO: ASEGURARSE DE 31 MABYBE 32
+            if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
+            if ( i<0 || i>=32 ) throw new Exception("Must be 0-31");//TODO: ASEGURARSE DE 32 MABYBE 31
 
             //[X0, Y0, X0Y0%P, X1, Y1, X1Y1%P, ...]
             byte[][] pubksDecompressed = new byte[][] {
@@ -1764,13 +1776,12 @@ namespace smartBNB
 
             string Pbs = "Ps_"+bs;
             BigInteger[][] Ps = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Pbs);
-            if(Ps.Length==0) return false;
+
             string Qbs = "Qs_"+bs;
             BigInteger[][] Qs = (BigInteger[][])getStateFromStorage(STG_POINTMUL, stg_key, Qbs);
-            if(Qs.Length==0) return false;
+
             string sbs = "ss_"+bs;
             BigInteger[] ss = (BigInteger[])getStateFromStorage(STG_POINTMUL, stg_key, sbs);
-            if(ss.Length==0) return false;
 
             PointMulStep initialStep = new PointMulStep();
             PointMulStep expectedStep = new PointMulStep();
@@ -1782,7 +1793,7 @@ namespace smartBNB
                 if (o==null) return false;
                 challengeVars = (GeneralChallengeVariables)o;
                 ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
-                if(usignableBytes.Length<4) return false;
+
                 int validatorIndex = (int)usignableBytes[3];
                 if (validatorIndex>=11) return false;
 
@@ -1851,6 +1862,8 @@ namespace smartBNB
 
         private static bool ChallengeTxProof(byte[] stg_key, int sigIndex)
         {
+            if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
+            
             GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
             Object o = getStateFromStorage(STG_GENERAL, stg_key, null);
             if (o==null) return false;
@@ -1860,12 +1873,12 @@ namespace smartBNB
             byte[] blockHeader = challengeVars.blockHeader;
 
             ulong[] usignableBytes = challengeVars.signableBytes[sigIndex];
-            if(usignableBytes.Length<3) return false;
+
             int[] ini_fin = new int[2];
             ini_fin[0] = (int)usignableBytes[1];
             ini_fin[1] = (int)usignableBytes[2];
 
-            if (ini_fin[0]<0 || ini_fin[1] > usignableBytes.Length-4) return false;
+            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1] > usignableBytes.Length-4) return false;
 
             BigInteger headerTimestamp = decodeTimestamp(usignableBytes, ini_fin);
 
@@ -1948,8 +1961,6 @@ namespace smartBNB
             return LeafHash(Sha256(tx));
         }
 
-        //unmarshal
-
         [Serializable]
         struct Output
         {
@@ -1958,9 +1969,11 @@ namespace smartBNB
             public string denom;
         }
 
+        //unmarshal
+
         private static ulong[] Uvarint(ulong [] bz, int[] ini_fin)
         {
-            if (ini_fin[1]-ini_fin[0]+1<bz.Length) return new ulong[]{0, 0};
+            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1] > bz.Length-4) return new ulong[]{0, 0};
 
             ulong x=0;
             int s=0;
@@ -2013,6 +2026,8 @@ namespace smartBNB
             ini_fin[0] = ini;
             ini_fin[1] = ini+len-1;
 
+            if (ini<0 || len<0 ||ini+len>=bz.Length) return o;
+
             //decode struct
             ini_fin = DecodeByteSlice(bz, ini_fin);
             if (ini_fin[0] == ini_fin[1])
@@ -2024,7 +2039,7 @@ namespace smartBNB
             //DECODE ADDRESS
             int[] add_ini_fin = DecodeByteSlice(bz, ini_fin);
             int addLen = (add_ini_fin[1]-add_ini_fin[0])+1;
-            if (addLen != 20)
+            if (addLen != 20 || add_ini_fin[0]+19>=bz.Length)
                 return o;
 
             byte[] address = new byte[20];
@@ -2045,6 +2060,7 @@ namespace smartBNB
 
             //DECODE ASSET
             int[] ass_ini_fin = DecodeByteSlice(bz, ini_fin);
+            if(ass_ini_fin[0]+2>=bz.Length) return o;
             byte[] asset = new byte[3];
             for (int i = 0; i < 3; i++)
             {
@@ -2053,6 +2069,7 @@ namespace smartBNB
             }
             o.denom = asset.AsString();
 
+            if(ass_ini_fin[1]+2>=bz.Length) return o;
             //slide till amount
             ini_fin[0] = ass_ini_fin[1]+1;
             ini_fin[1] = bz.Length-1;
@@ -2060,16 +2077,14 @@ namespace smartBNB
             //skip decoding of field number and type
             ini_fin[0]=ini_fin[0]+1;
 
-            return DecodeAmount(o, bz, ini_fin);
+            o.amount = DecodeAmount(bz, ini_fin);
+            return o;
         }
 
-        private static Output DecodeAmount(Output o, ulong[] bz, int[] ini_fin)
+        private static BigInteger DecodeAmount(ulong[] bz, int[] ini_fin)
         {
             ulong[] num_n = DecodeUvarint(bz, ini_fin);
-            BigInteger amount = num_n[0];
-            o.amount = amount;
-
-            return o;
+            return num_n[0];
         }
 
         private static bool ChallengeTxData(byte[] stg_key)
@@ -2103,6 +2118,7 @@ namespace smartBNB
             
             byte[] ttype = new byte[4];
             byte tty;
+            if(ini_fin[0]+3>=txb.Length) return false;
             for (int i = 0; i<ttype.Length;i++)
             {
                 tty = (byte)txb[ini_fin[0]+i];
@@ -2118,7 +2134,7 @@ namespace smartBNB
             Output output = new Output();
             output = decodeOutput(txb, start, start+len);
 
-            byte[] bytestx = new byte[350];//TODO: DINAMIC LEN
+            byte[] bytestx = new byte[300];//TODO: DINAMIC LEN
             byte bt;
             for (int i = 0; i<txb.Length-2;i++)
             {
