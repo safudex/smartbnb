@@ -1486,6 +1486,8 @@ namespace smartBNB
                 GeneralChallengeVariables challengeVars = new GeneralChallengeVariables();
                 challengeVars.signature = (byte[][])args[1];
                 if (challengeVars.signature.Length!=8) return false;
+                for (int i = 0; i<8; i++)
+                    if (challengeVars.signature[i].Length != 64) return false;
 
                 challengeVars.xs = (BigInteger[])args[2];
                 if (challengeVars.xs.Length!=8) return false;
@@ -1494,15 +1496,19 @@ namespace smartBNB
                 if (challengeVars.ys.Length!=8) return false;
 
                 challengeVars.signableBytes = (ulong[][])args[4];
-                if (challengeVars.signableBytes.Length!=8 || challengeVars.signableBytes.Length>1500) return false;
+                if (challengeVars.signableBytes.Length!=8) return false;
                 for (int i = 0; i<8; i++)
-                    if (challengeVars.signableBytes[i].Length < 4) return false;
+                    if (challengeVars.signableBytes[i].Length < 4 || challengeVars.signableBytes[i].Length>1500) return false;
 
                 challengeVars.pre = (ulong[][])args[5];
                 if (challengeVars.pre.Length!=8) return false;
+                for (int i = 0; i<8; i++)
+                    if (challengeVars.pre[i].Length > 48 ) return false;
 
                 challengeVars.preHash = (ulong[][])args[6];
                 if (challengeVars.preHash.Length!=8) return false;
+                for (int i = 0; i<8; i++)
+                    if (challengeVars.preHash[i].Length != 8 ) return false;
 
                 challengeVars.preHashMod = (BigInteger[])args[7];
                 if (challengeVars.preHashMod.Length!=8) return false;
@@ -1878,7 +1884,7 @@ namespace smartBNB
             ini_fin[0] = (int)usignableBytes[1];
             ini_fin[1] = (int)usignableBytes[2];
 
-            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1] > usignableBytes.Length-4) return false;
+            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1] >= usignableBytes.Length) return false;
 
             BigInteger headerTimestamp = decodeTimestamp(usignableBytes, ini_fin);
 
@@ -1973,7 +1979,7 @@ namespace smartBNB
 
         private static ulong[] Uvarint(ulong [] bz, int[] ini_fin)
         {
-            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1] > bz.Length-4) return new ulong[]{0, 0};
+            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1] >= bz.Length) return new ulong[]{0, 0};
 
             ulong x=0;
             int s=0;
@@ -2098,7 +2104,7 @@ namespace smartBNB
             int start = (int)txb[0];
             int len = (int)txb[1];
 
-            if (start < 0 || len > txb.Length-2) return false;
+            if (start < 0 || len >= txb.Length-2) return false;
 
             //VERIFY TX type
             int[] ini_fin = new int[2];
