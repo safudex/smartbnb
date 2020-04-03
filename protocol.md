@@ -143,6 +143,8 @@ Yet another system can be based on initially sending a small transaction, which 
 
 # Implementation
 - [NEO smart contract](./Contract/smartBNB/Contract.cs) ([interface](./Contract/smartBNB/operationargs.md))
+- [Price oracle](https://github.com/corollari/neo-oracle)
+- [NEO notifications PubSub system](https://github.com/corollari/neo-PubSub)
 
 # Previous work
 - Kyber bridge proposal between BTC and ETH
