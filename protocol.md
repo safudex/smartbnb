@@ -123,23 +123,26 @@ Theoretically this trade should be taken by someone because of the simple fact t
 This can be achieved by replacing the initial locking of f(Y) NEO with a small BNB transaction on BNC that will be used to prove who was first if a dispute where to arise.
 More details to be added later.
  
-system to start porting process
- the system must satisfy two goals
-  user UX
-  prevent collaterals from being able to censor token portings?
-  prevent spam attacks where collateral money is locked up uselessly and the system is halted
-  prevent attack where collateral steals money
-   (collateral sends a bunch of money at the same time another client is sending money)
+System to start porting process
+- the system must satisfy two goals
+  - user UX
+  - prevent collaterals from being able to censor token portings?
+  - prevent spam attacks where collateral money is locked up uselessly and the system is halted
+  - prevent attack where collateral steals money
+    - (collateral sends a bunch of money at the same time another client is sending money)
  
-a basic system would be one where some neo is locked to start a token porting, which causes some collateral to be locked. This neo is returned if the process is succesful and lost if not.
- this solves the last 3 problems but makes the UX shitty as now a user needs to do 2 operations on 2 different blockchains and needs to own two different tokens
+A basic system would be one where some neo is locked to start a token porting, which causes some collateral to be locked. This neo is returned if the process is succesful and lost if not.
+- this solves the last 3 problems but makes the UX shitty as now a user needs to do 2 operations on 2 different blockchains and needs to own two different tokens
  
-another system based on atomic swaps would
- solve the 4th problem
- not solve the 3rd problem unless we allow collaterals to choose the clients that can port tokens, which breaks the 2nd porblem. This is because there is no loss caused by the creation of atomic swaps
- regarding the first problem, the ux is better because you only need to do a single transaction on Binance Chain
+Another system based on atomic swaps would
+- solve the 4th problem
+- not solve the 3rd problem unless we allow collaterals to choose the clients that can port tokens, which breaks the 2nd porblem. This is because there is no loss caused by the creation of atomic swaps
+- regarding the first problem, the ux is better because you only need to do a single transaction on Binance Chain
  
-yet another system can be based on initially sending a small transaction, which will lock the coins. If the attack is performed on that transactions only the amount of that transaction will be lost.
+Yet another system can be based on initially sending a small transaction, which will lock the coins. If the attack is performed on that transactions only the amount of that transaction will be lost.
+
+# Implementation
+- [NEO smart contract](./Contract/smartBNB/Contract.cs) ([interface](./Contract/smartBNB/operationargs.md))
 
 # Previous work
 - Kyber bridge proposal between BTC and ETH
