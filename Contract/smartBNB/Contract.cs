@@ -83,8 +83,7 @@ namespace smartBNB
             public BigInteger AmountBNB;
             public BigInteger LastTimestamp;
             public BigInteger GASDeposit;
-
-            public string denom;
+            public string Denom;
         }
 
         [Serializable]
@@ -375,8 +374,9 @@ namespace smartBNB
         }
 
         //TODO: MINT BY DENOM
-        private static void Mint(byte[] to, BigInteger amount)
+        private static void Mint(byte[] to, BigInteger amount, string denom)
         {
+            if (amount <= 0) throw new Exception("Burning non-existing sBNB");
             StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
             Balance toBalance = updateBalance(deserializeBalance(asset.Get(to)));
             toBalance.amount = toBalance.amount + amount;
@@ -390,7 +390,7 @@ namespace smartBNB
         {
             StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
             Balance fromBalance = updateBalance(deserializeBalance(asset.Get(from)));
-            if (amount > fromBalance.amount) throw new Exception("Burning non-existing sBNB");
+            if (amount > fromBalance.amount || amount <= 0) throw new Exception("Burning non-existing sBNB");
             fromBalance.amount = fromBalance.amount - amount;
             asset.Put(from, Helper.Serialize(fromBalance));
 
@@ -660,7 +660,7 @@ namespace smartBNB
             pc.AmountBNB = AmountBNB;
             pc.LastTimestamp = timestamp;
             pc.GASDeposit = collateralAmountNedeed/FACTOR_PORTREQUEST_DIVISOR;
-            pc.denom = denom;
+            pc.Denom = denom;
             putPortingContract(portingContractID, pc);
             Storage.Put("pcid", portingContractID);
             //TransferCGAS(userAddr, ExecutionEngine.ExecutingScriptHash, pc.GASDeposit);
@@ -703,7 +703,7 @@ namespace smartBNB
                 putCollatById(collatID, collat);
             }
 
-            Mint(pc.UserAddr, pc.AmountBNB);
+            Mint(pc.UserAddr, pc.AmountBNB, pc.Denom);
         }
 
         private static bool ChallengeDeposit(byte[] portingContractID)
@@ -752,11 +752,6 @@ namespace smartBNB
         {
             if (!Runtime.CheckWitness(userAddr)) return false;
             if (AmountBNB < 1) return false;
-
-            /*Collat collat = new Collat();
-            Object c = getCollatById(collatID);
-            if(c==null) return false;
-            collat = (Collat)c;*/
 
             Collat collat = new Collat();
             collat = getCollatById(collatID);
@@ -1780,7 +1775,7 @@ namespace smartBNB
         private static bool ChallengeEdDSA_PointMul_Setp(byte[] stg_key, int sigIndex, int i, string mulid)
         {
             if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
-            if ( i<0 || i>=32 ) throw new Exception("Must be 0-31");//TODO: ASEGURARSE DE 32 MABYBE 31
+            if ( i<0 || i>=32 ) throw new Exception("Must be 0-31");
 
             //[X0, Y0, X0Y0%P, X1, Y1, X1Y1%P, ...]
             byte[][] pubksDecompressed = new byte[][] {
@@ -2210,7 +2205,7 @@ namespace smartBNB
             pc = getPortingContract(portingContractID);
             if(pc.ContractStatus == CONTRACT_STATUS_NULL) return false;
 
-            if (output.addr != pc.BCNAddr || pc.AmountBNB != output.amount || output.denom != pc.denom)
+            if (output.addr != pc.BCNAddr || pc.AmountBNB != output.amount || output.denom != pc.Denom)
                 return false;
 
             return (txProofLeafHash == getLeafHashByTxBytes(bytestx.Take(txb.Length-2)));
