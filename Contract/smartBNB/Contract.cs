@@ -540,11 +540,6 @@ namespace smartBNB
 
         private static bool UndercollateralizationChallenge(byte[] collatID)
         {
-            /*Collat collat = new Collat();
-            Object c = getCollatById(collatID);
-            if(c==null) return false;
-            collat = (Collat)c;*/
-
             Collat collat = new Collat();
             collat = getCollatById(collatID);
             if (collat.Address.Length == 0) return false;
@@ -578,9 +573,6 @@ namespace smartBNB
             if (newAmount<1) return false;
 
             byte[] collatID = address.Concat(BNCAddress);
-
-            /*Collat collat = new Collat();
-            Object c = getCollatById(collatID);*/
 
             Collat collat = new Collat();
             collat = getCollatById(collatID);
