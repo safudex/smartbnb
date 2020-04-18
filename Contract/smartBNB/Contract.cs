@@ -2030,7 +2030,7 @@ namespace smartBNB
 
         private static ulong[] Uvarint(ulong [] bz, int[] ini_fin)
         {
-            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1] >= bz.Length) return new ulong[]{0, 0};
+            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1]-ini_fin[0] >= bz.Length) return new ulong[]{0, 0};
 
             ulong x=0;
             int s=0;
