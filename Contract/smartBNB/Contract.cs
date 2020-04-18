@@ -1234,7 +1234,7 @@ namespace smartBNB
               "abc"
               */
 
-            if (pre.Length==0 || pre.Length%16!=0) return null;//TODO LEN
+            if (pre.Length==0 || pre.Length%16!=0) return null;
 
             //constants
             ulong[] K = new ulong[80];
@@ -1808,7 +1808,7 @@ namespace smartBNB
 
             int istep = (sigIndex*32+i-1)%slicesLen;//array index, negativeValue%value does not work in vm so its ok here
             int iarr = (i+sigIndex*32)/slicesLen;
-            string bs = mulid+((BigInteger)(iarr+48)).AsByteArray().AsString();
+            string bs = mulid+((BigInteger)(iarr)).AsByteArray().AsString();
 
             string Pbs = "Ps_"+bs;
             BigInteger[][] Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
@@ -1873,6 +1873,21 @@ namespace smartBNB
                 initialStep.s = ss[istep];
                 initialStep.P = Ps[istep];
                 initialStep.Q = Qs[istep];
+            }
+
+            if (istep == Ps.Length-1)
+            {
+                bs = mulid+((BigInteger)(iarr+1)).AsByteArray().AsString();
+                Pbs = "Ps_"+bs;
+                Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
+                Qbs = "Qs_"+bs;
+                Qs = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
+                sbs = "ss_"+bs;
+                ss = (BigInteger[])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, sbs);
+                Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
+                Qs = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
+                ss = (BigInteger[])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, sbs);
+                istep = -1;
             }
 
             expectedStep.Q = Qs[istep+1];
