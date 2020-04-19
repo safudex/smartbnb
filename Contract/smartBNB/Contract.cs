@@ -2171,7 +2171,7 @@ namespace smartBNB
             ini_fin[0] = ini_fin[0]+(int)num_n[1];
             if(ini_fin[1]-ini_fin[0]<10) return false;
             
-            ini_fin[0] = ini_fin[0]+5;
+            ini_fin[0] = ini_fin[0]+5;//we skip 4 + 1 (decodeFieldNumberAndTyp3)
             num_n = DecodeUvarint(txb, ini_fin);
             
             ini_fin[0] = ini_fin[0]+(int)num_n[1];
@@ -2208,10 +2208,8 @@ namespace smartBNB
             return CheckTxData(stg_key, output, txProofLeafHash, bytestx, txb);
         }
 
-        private static bool CheckTxData(byte[] stg_key, Output output, byte[] txProofLeafHash, byte[] bytestx, ulong[] txb)
+        private static bool CheckTxData(byte[] portingContractID, Output output, byte[] txProofLeafHash, byte[] bytestx, ulong[] txb)
         {
-			byte[] portingContractID = stg_key.Take(stg_key.Length-1);
-
             PortingContract pc = new PortingContract();
             pc = getPortingContract(portingContractID);
             if(pc.ContractStatus == CONTRACT_STATUS_NULL) return false;
