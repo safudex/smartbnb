@@ -841,24 +841,28 @@ namespace smartBNB
 
         private static bool isProofSaved(byte[] portingContractID)
         {
-            string[] ss = {STG_TYPE_GENERAL, STG_TYPE_PM, "Ps_ha0", "Ps_ha1", "ss_ha0", "ss_ha1", "Qs_ha0", "Qs_ha1", "Ps_sb0", "Ps_sb1", "ss_sb0", "Qs_sb0", "ss_sb1", "Qs_sb1"};
-            byte[][] ids = new byte[ss.Length][];
-            for (int i = 0; i < 2; i++)
+            string[] labels = {"Ps_ha", "ss_ha", "Qs_ha", "Ps_sb", "ss_sb", "Qs_sb"};
+
+            portingContractID = portingContractID.Concat(STG_TYPE_POINTMUL.AsByteArray());
+            
+            byte[] num = new byte[16];
+            for (byte i=1; i<num.Length; i++)
             {
-                ids[i] = portingContractID.Concat(ss[i].AsByteArray());
+                num[i] = i;
+            }
+            
+            byte[] key = portingContractID.Concat("Ps_ha".AsByteArray());
+            
+            for (int i = 0; i<labels.Length; i++)
+            {
+                key = portingContractID.Concat(labels[i].AsByteArray());
+                for (int j = 0; j<slicesLen; j++)
+                {
+                    if (Storage.Get(key.Concat(num.Range(j, 1).Take(1))).Length==0)
+                        return false;
+                }
             }
 
-            for (int i = 2; i < ids.Length; i++)
-            {
-                ids[i] = portingContractID.Concat((STG_TYPE_POINTMUL + ss[i]).AsByteArray());
-            }
-
-
-            for (int i = 0; i < ids.Length; i++)
-            {
-                if (Storage.Get(ids[i]).Length==0)
-                    return false;
-            }
             return true;
         }
 
