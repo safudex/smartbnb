@@ -29,12 +29,13 @@ async function invokeOperation(operation, args, gas, fees){
     let txr
     try {
         const response = await invoke(operation, args, gas, fees)
-        txr = (await getTxResult(response.txid, 2*60)).data.result.executions[0]
+        txr = (await getTxResult(response.txid, 2*60)).data.result//.executions[0]
         if (!txr) {
             console.log("Attemps exhausted")
             //retry
         }
-        console.log(txr)//return txr
+		else
+	        console.log(txr.executions[0])//return txr
     } catch (error) {
         console.log(error.message)
     }
@@ -94,6 +95,10 @@ async function SaveState(){
 //		pushParams(neonJSParams, 'Array', signableBytes);
 		//6 ulong[][] pres
 		var pres = cmdArgs[6].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
+		console.log("preeeeeeeeeeeee", pres[0][pres[0].length-1])
+/*		for (p in pres){
+			pres[p][pres[p].length-1]=pres[p][pres[p].length-1]-1
+		}*/
 		pushParams(neonJSParams, 'Array', pres);
 		//7 ulong[][] preshash
 		var presHash = cmdArgs[7].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
@@ -127,8 +132,13 @@ console.log(cmdArgs[5])
 		var pps = cmdArgs[6].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
 		var a = []
 		console.log(signableBytes.length)
+console.log(cmdArgs[5])
 		for (sb in signableBytes){
 			a.push(signableBytes[sb].slice(0, 128883))
+//			signableBytes[sb].push(Neon.sc.ContractParam.integer(128))
+/*			for (i in signableBytes[sb]){
+				signableBytes[sb][i] = Neon.sc.ContractParam.integer(1)
+			}*/
 		}
 		pushParams(neonJSParams, 'Array', signableBytes);
 		console.log(pps[0].length)
@@ -146,7 +156,7 @@ console.log(cmdArgs[5])
 		pushParams(neonJSParams, 'Array', presHashMod);
 
 		await invokeOperation("savestate", neonJSParams, 500, 100)
-var numSlices = 8
+var numSlices = 16
 		//state pointmul sb
 		//12 bigint[][] Qs_sb
 		//13 bigint[] ss_sb
@@ -154,24 +164,8 @@ var numSlices = 8
 		var pointMulData=fs.readFileSync('pointmulsteps', 'utf-8').split("||");
 console.log(pointMulData[0].length)
 console.log(pointMulData[1].length)
-		var ss_sb = []
-		var Ps_sb=[]
-		var Qs_sb=[]
-		var pointMuls_sb = pointMulData[0].split(" ")
-		pointMuls_sb.map(v => {
-			var all = v.split(",")
-			ss_sb = ss_sb.concat(all.slice(0, 32).map(Neon.sc.ContractParam.integer))
-			var Qs_tmp = all.slice(32, 32+(32*4)).map(Neon.sc.ContractParam.integer)
-			Qs_sb = Qs_sb.concat(arrayTo2DArray1(Qs_tmp, 4))
-			var Ps_tmp = all.slice(32+(32*4)).map(Neon.sc.ContractParam.integer)
-			Ps_sb = Ps_sb.concat(arrayTo2DArray1(Ps_tmp, 4))
-		})
 
-		await savePointMuls(Ps_sb, numSlices, "Ps_sb", "multi")
-		await savePointMuls(ss_sb, numSlices, "ss_sb", "simple")
-		await savePointMuls(Qs_sb, numSlices, "Qs_sb", "multi")
 
-		
 		//Second invoke, state pointmul ha
 		var ss_ha = []
 		var Ps_ha=[]
@@ -189,16 +183,52 @@ console.log(pointMulData[1].length)
 		await savePointMuls(Ps_ha, numSlices, "Ps_ha", "MULTI")
 		await savePointMuls(ss_ha, numSlices, "ss_ha", "SIMPLE")
 		await savePointMuls(Qs_ha, numSlices, "Qs_ha", "MULTI")
+
+		var ss_sb = []
+		var Ps_sb=[]
+		var Qs_sb=[]
+		var pointMuls_sb = pointMulData[0].split(" ")
+		pointMuls_sb.map(v => {
+			var all = v.split(",")
+			ss_sb = ss_sb.concat(all.slice(0, 32).map(Neon.sc.ContractParam.integer))
+			var Qs_tmp = all.slice(32, 32+(32*4)).map(Neon.sc.ContractParam.integer)
+			Qs_sb = Qs_sb.concat(arrayTo2DArray1(Qs_tmp, 4))
+			var Ps_tmp = all.slice(32+(32*4)).map(Neon.sc.ContractParam.integer)
+			Ps_sb = Ps_sb.concat(arrayTo2DArray1(Ps_tmp, 4))
+		})
+
+		await savePointMuls(Ps_sb, numSlices, "Ps_sb", "MULTI")
+		await savePointMuls(ss_sb, numSlices, "ss_sb", "SIMPLE")
+		await savePointMuls(Qs_sb, numSlices, "Qs_sb", "MULTI")
+
+		
+/*		//Second invoke, state pointmul ha
+		var ss_ha = []
+		var Ps_ha=[]
+		var Qs_ha=[]
+		var pointMuls_ha = pointMulData[1].split(" ")
+		pointMuls_ha.map(v => {
+			var all = v.split(",")
+			ss_ha = ss_ha.concat(all.slice(0, 32).map(Neon.sc.ContractParam.integer))
+			var Qs_tmp = all.slice(32, 32+(32*4)).map(Neon.sc.ContractParam.integer)
+			Qs_ha = Qs_ha.concat(arrayTo2DArray1(Qs_tmp, 4))
+			var Ps_tmp = all.slice(32+(32*4)).map(Neon.sc.ContractParam.integer)
+			Ps_ha = Ps_ha.concat(arrayTo2DArray1(Ps_tmp, 4))
+		})
+
+		await savePointMuls(Ps_ha, numSlices, "Ps_ha", "MULTI")
+		await savePointMuls(ss_ha, numSlices, "ss_ha", "SIMPLE")
+		await savePointMuls(Qs_ha, numSlices, "Qs_ha", "MULTI")*/
 }
 
 async function savePointMuls(arr, nchks, id, type) {
 		var j = arr.length/nchks
-		for (var i=0; i<1; i++){//nchks; i++) {
+		for (var i=0; i<nchks; i++) {
 				neonJSParams = []
 				pushParams(neonJSParams, 'Hex', portingContractID)
 				pushParams(neonJSParams, 'String', type)
-				pushParams(neonJSParams, 'String', id+i)
-				console.log(id+i)
+				pushParams(neonJSParams, 'String', id+String.fromCharCode(i))
+				console.log("ddddddddddddddddddddddddddddD_:_Ñ:_Ñ", id+String.fromCharCode(i))
 				pushParams(neonJSParams, 'Array', arr.slice(i*j, (i+1)*j))
 
                 await invokeOperation("savestate", neonJSParams, 50, 10)
@@ -382,12 +412,12 @@ function executeChallenge(challengeNum){
     //1 byte[] portingContractID
   //  pushParams(neonJSParams, 'Address', ECO_WALLET._address);
 	pushParams(neonJSParams, 'Hex', portingContractID)
-    pushParams(neonJSParams, 'Integer', challengeNum)
+    pushParams(neonJSParams, 'Integer', 6)
     pushParams(neonJSParams, 'Integer', 0)
     pushParams(neonJSParams, 'Integer', 0)
     pushParams(neonJSParams, 'String', "ha")
 
-    invokeOperation("executeChallenge", neonJSParams, 1010, 100)
+    invokeOperation("executeChallenge", neonJSParams, 155, 10)
 }
 
 function challengeDeposit(){
@@ -441,18 +471,17 @@ console.log(signableBytes[0].length)
 
     invokeOperation("d", neonJSParams, 50, 10)
 }
-
 //testDecodeTimestamp()
 
 collatid = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 portingContractID = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa23ba2703c53263e8d6e522dc32203339dcd8eee9bbbe885e"
-scriptHash = "1440de00726bb28b373adb834a6fabe92282caa4"
+scriptHash = "4054051a1e1721295565ea3bc0a042e336c3fe7a"
 
 //RegisterAsCollateral()
 //NewPorting()
 //challengeDeposit()
 //SaveState()
-executeChallenge("6");
+executeChallenge("1");//param commented in function
 //pointmulchallenge num = 6
 //initialchecks num =1
 
