@@ -1810,8 +1810,8 @@ namespace smartBNB
                 new byte[] {0x50, 0x4c, 0xd0, 0x7c, 0x07, 0xf7, 0x27, 0xd4, 0x71, 0xc4, 0x2b, 0x42, 0x13, 0x0c, 0xcf, 0x4c, 0x2f, 0x86, 0xb2, 0xe6, 0xe9, 0x44, 0x12, 0xfe, 0x89, 0x84, 0xf8, 0x47, 0x32, 0x01, 0xef, 0x72}
             };
 
-            int istep = (sigIndex*32+i-1)%slicesLen;//array index, negativeValue%value does not work in vm so its ok here
-            int iarr = (i+sigIndex*32)/slicesLen;
+            int temp = i==0?1:i;
+            int iarr = ((temp-1+(sigIndex+1)*32)/slicesLen)-2;
             string bs = mulid+((BigInteger)(iarr)).AsByteArray().AsString();
 
             string Pbs = "Ps_"+bs;
@@ -1826,7 +1826,7 @@ namespace smartBNB
             PointMulStep initialStep = new PointMulStep();
             PointMulStep expectedStep = new PointMulStep();
 
-            if (modPositive(istep,32)-32==-1)
+            if (i==0)
             {
                 GeneralChallengeVariablesPM challengeVarspm = new GeneralChallengeVariablesPM();
                 Object opm = getStateFromStorage(STG_TYPE_PM, stg_key, null);
@@ -1874,29 +1874,28 @@ namespace smartBNB
             }
             else
             {
-                initialStep.s = ss[istep];
-                initialStep.P = Ps[istep];
-                initialStep.Q = Qs[istep];
+                initialStep.Q = Qs[(i-1)%Qs.Length];
+                initialStep.s = ss[(i-1)%ss.Length];
+                initialStep.P = Ps[(i-1)%Ps.Length];
+                
+                if (i == Ps.Length)
+                {
+                    Runtime.Notify("entra sii");
+                    bs = mulid+((BigInteger)(iarr+1)).AsByteArray().AsString();
+                    Pbs = "Ps_"+bs;
+                    Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
+                    Qbs = "Qs_"+bs;
+                    Qs = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
+                    sbs = "ss_"+bs;
+                    ss = (BigInteger[])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, sbs);
+                    Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
+                    Qs = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
+                }
             }
-
-            if (istep == Ps.Length-1)
-            {
-                bs = mulid+((BigInteger)(iarr+1)).AsByteArray().AsString();
-                Pbs = "Ps_"+bs;
-                Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
-                Qbs = "Qs_"+bs;
-                Qs = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
-                sbs = "ss_"+bs;
-                ss = (BigInteger[])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, sbs);
-                Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
-                Qs = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
-                ss = (BigInteger[])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, sbs);
-                istep = -1;
-            }
-
-            expectedStep.Q = Qs[istep+1];
-            expectedStep.s = ss[istep+1];
-            expectedStep.P = Ps[istep+1];
+            
+            expectedStep.Q = Qs[i%Qs.Length];
+            expectedStep.s = ss[i%ss.Length];
+            expectedStep.P = Ps[i%Ps.Length];
 
             PointMulStep res = new PointMulStep();
 
