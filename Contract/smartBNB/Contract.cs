@@ -29,8 +29,8 @@ namespace smartBNB
         private static readonly BigInteger PRICE_DENOMINATOR = 1000000;
         private static readonly BigInteger FACTOR_PORTREQUEST_DIVISOR = 10;
 
-        private static readonly byte OPERATION_ADD = 0x01;//WAITING FOR THE USER TO SEND BNB
-        private static readonly byte OPERATION_SUB = 0x02;//CHALLENGE ACTIVATED
+        private static readonly byte OPERATION_ADD = 0x01;
+        private static readonly byte OPERATION_SUB = 0x02;
 
         // See https://docs.tendermint.com/master/spec/blockchain/encoding.html#merkle-trees
         private static readonly byte[] leafPrefix = { 0x00 };
@@ -369,7 +369,7 @@ namespace smartBNB
             Storage.Put("lostCollateralGAS", lostCollateralGAS - exchangedGAS);
             Storage.Put("unbackedBNB", unbackedBNB - amountBNB);
 
-            //TransferCGAS(ExecutionEngine.ExecutingScriptHash, from, exchangedGAS);
+            TransferCGAS(ExecutionEngine.ExecutingScriptHash, from, exchangedGAS);
             return true;
         }
 
@@ -439,49 +439,42 @@ namespace smartBNB
             if(pc.ContractStatus == CONTRACT_STATUS_NULL) return false;
 
             BigInteger t = Runtime.Time-pc.LastTimestamp;
-            //if(t < CONTRACT_TIMEOUT_UPLOADPROOF || t > CONTRACT_TIMEOUT_UPLOADPROOF + WINDOW_CHALLENGE) return false;
+            if(t < CONTRACT_TIMEOUT_UPLOADPROOF || t > CONTRACT_TIMEOUT_UPLOADPROOF + WINDOW_CHALLENGE) return false;
 
             bool challengeResult = true;
             if(challengeNum==0x1)
             {
                 int sigNum = (int)args[2];
-                if(sigNum>=8) return false;
                 challengeResult = ChallengeInitialChecks(portingContractID, sigNum);
             }
             else if(challengeNum==0x2)
             {
                 int sigNum = (int)args[2];
-                if(sigNum>=8) return false;
                 challengeResult = ChallengeCheckBytesV2(portingContractID, sigNum);
             }
             else if(challengeNum==0x3)
             {
                 int sigNum = (int)args[2];
-                if(sigNum>=8) return false;
                 challengeResult = ChallengeSha512(portingContractID, sigNum);
             }
             else if(challengeNum==0x4)
             {
                 int sigNum = (int)args[2];
-                if(sigNum>=8) return false;
                 challengeResult = ChallengeSha512ModQ(portingContractID, sigNum);
             }
             else if(challengeNum==0x5)
             {
                 int sigNum = (int)args[2];
-                if(sigNum>=8) return false;
                 challengeResult = ChallengePointEqual(portingContractID, sigNum);
             }
             else if(challengeNum==0x6){
                 int sigNum = (int)args[2];
-                if(sigNum>=8) return false;
                 int i = (int)args[3];
                 string mulid = (string)args[4];
                 challengeResult = ChallengeEdDSA_PointMul_Setp(portingContractID, sigNum, i, mulid);
             }
             else if(challengeNum==0x7){
                 int sigNum = (int)args[2];
-                if(sigNum>=8) return false;
                 challengeResult = ChallengeTxProof(portingContractID, sigNum);
             }
             else if (challengeNum==0x8){
@@ -512,7 +505,7 @@ namespace smartBNB
                     collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
                     putCollatById(collatID, collat);
 
-                    //TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, collateralGASTaken + DEPOSIT_CHALLENGE);
+                    TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, collateralGASTaken + DEPOSIT_CHALLENGE);
                 }
                 else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
                 {
@@ -583,7 +576,7 @@ namespace smartBNB
                 collat.BNCAddress = BNCAddress;
                 collat.CollateralAmount = newAmount;
                 putCollatById(collatID, collat);
-                //TransferCGAS(address, ExecutionEngine.ExecutingScriptHash, newAmount);
+                TransferCGAS(address, ExecutionEngine.ExecutingScriptHash, newAmount);
                 Deposited(address, newAmount);
             }
             else
@@ -592,7 +585,7 @@ namespace smartBNB
                 {
                     collat.CollateralAmount = collat.CollateralAmount+newAmount;;
                     putCollatById(collatID, collat);
-                    //TransferCGAS(address, ExecutionEngine.ExecutingScriptHash, newAmount);
+                    TransferCGAS(address, ExecutionEngine.ExecutingScriptHash, newAmount);
                     Deposited(address, newAmount);
                 }
                 else if(operation==OPERATION_SUB)
@@ -601,7 +594,7 @@ namespace smartBNB
                     if(newAmount > calculateCollateralAmountLeft(collat, currentPrice)) return false;
                     collat.CollateralAmount = collat.CollateralAmount - newAmount;
                     putCollatById(collatID, collat);
-                    //TransferCGAS(ExecutionEngine.ExecutingScriptHash, address, newAmount);
+                    TransferCGAS(ExecutionEngine.ExecutingScriptHash, address, newAmount);
                 }
             }
             return true;
@@ -632,7 +625,7 @@ namespace smartBNB
             collat = getCollatById(collatID);
             if (collat.Address.Length == 0) return new byte[0];
 
-            BigInteger currentPrice = 1;//getCurrentPrice();
+            BigInteger currentPrice = getCurrentPrice();
 
             BigInteger collateralAmountNedeed = calculateGASCollateralAmount(AmountBNB, currentPrice) + DEPOSIT_CHALLENGE; // Get the amount needed in GAS
             if(calculateCollateralAmountLeft(collat, currentPrice) < collateralAmountNedeed) return new byte[0];
@@ -655,7 +648,7 @@ namespace smartBNB
             pc.Denom = denom;
             putPortingContract(portingContractID, pc);
             Storage.Put("pcid", portingContractID);
-            //TransferCGAS(userAddr, ExecutionEngine.ExecutingScriptHash, pc.GASDeposit);
+            TransferCGAS(userAddr, ExecutionEngine.ExecutingScriptHash, pc.GASDeposit);
             return portingContractID;
         }
 
@@ -679,7 +672,7 @@ namespace smartBNB
 
             SuccessfulDeposit(pc, portingContractID, collat, collatID, false);
 
-            //TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, pc.GASDeposit);
+            TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, pc.GASDeposit);
             return true;
         }
 
@@ -709,13 +702,13 @@ namespace smartBNB
 
             if(pc.ContractStatus!=CONTRACT_STATUS_PORTREQUEST) return false;
             BigInteger t = Runtime.Time-pc.LastTimestamp;
-            //if(t < CONTRACT_TIMEOUT_PORTREQUEST || t > (CONTRACT_TIMEOUT_PORTREQUEST + WINDOW_CHALLENGE)) return false;
+            if(t < CONTRACT_TIMEOUT_PORTREQUEST || t > (CONTRACT_TIMEOUT_PORTREQUEST + WINDOW_CHALLENGE)) return false;
 
             pc.ContractStatus = CONTRACT_STATUS_CHALLENGEDEPOSIT;
             pc.LastTimestamp = Runtime.Time;
 
             putPortingContract(portingContractID, pc);
-            //TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
+            TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
 
             return true;
         }
@@ -735,7 +728,7 @@ namespace smartBNB
             pc.ContractStatus = CONTRACT_STATUS_CHALLENGEWITHDRAW;
             pc.LastTimestamp = Runtime.Time;
             putPortingContract(portingContractID, pc);
-            //TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
+            TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
 
             return true;
         }
@@ -811,7 +804,7 @@ namespace smartBNB
                     pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
                     collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
-                    //TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.CollatAddr, DEPOSIT_CHALLENGE); // Give collat the user's security deposit
+                    TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.CollatAddr, DEPOSIT_CHALLENGE); // Give collat the user's security deposit
                 }
             }
             else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEDEPOSIT)
@@ -821,7 +814,7 @@ namespace smartBNB
                     // User has uploaded proof, collat hasn't been able to prove it wrong -> User wins
                     // Validate deposit and distribute rewards
                     SuccessfulDeposit(pc, portingContractID, collat, collatID, true);
-                    //TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, (DEPOSIT_CHALLENGE * 2) + pc.GASDeposit);
+                    TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, (DEPOSIT_CHALLENGE * 2) + pc.GASDeposit);
                 }
 
             }
@@ -884,7 +877,7 @@ namespace smartBNB
 
             byte[] addrAllowed;
             
-            //if(Runtime.Time-pc.LastTimestamp > CONTRACT_TIMEOUT_UPLOADPROOF) return false;
+            if(Runtime.Time-pc.LastTimestamp > CONTRACT_TIMEOUT_UPLOADPROOF) return false;
             
             if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
                 addrAllowed=portingContractID.Range(0, 20);
@@ -1006,13 +999,13 @@ namespace smartBNB
             return (length % 2 == 0) ? length / 2 : (length + 1) / 2;
         }
 
-        // returns Sha256(0x01 || left || right)
+        // returns Sha256(0x01 + left + right)
         private static byte[] InnerHash(byte[] left, byte[] right)
         {
             return Sha256(innerPrefix.Concat(left.Concat(right)));
         }
 
-        // returns Sha256(0x00 || leaf)
+        // returns Sha256(0x00 + leaf)
         private static byte[] LeafHash(byte[] leaf)
         {
             return Sha256(leafPrefix.Concat(leaf));
@@ -1581,7 +1574,7 @@ namespace smartBNB
             return false;
         }
 
-        //WARNING ONLY USE FOR SRC.LENGTH <= 200
+        //ONLY USE FOR SRC.LENGTH <= 200
         private static byte[] ulongarr2bytearr(ulong[] src)
         {
             byte[] dest = new byte[200];//TODO: DINAMIC LEN
@@ -2040,7 +2033,7 @@ namespace smartBNB
 
         private static ulong[] Uvarint(ulong [] bz, int[] ini_fin)
         {
-            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1]-ini_fin[0] >= bz.Length) return new ulong[]{0, 0};
+            if (ini_fin[0] >= ini_fin[1] ||ini_fin[0]<0 || ini_fin[1]-ini_fin[0]+1 > bz.Length) return new ulong[]{0, 0};
 
             ulong x=0;
             int s=0;
@@ -2093,7 +2086,7 @@ namespace smartBNB
             ini_fin[0] = ini;
             ini_fin[1] = ini+len-1;
 
-            if (ini<0 || len<0 ||ini+len>=bz.Length) return o;
+            if (ini<0 || len<0 ||ini+len>bz.Length) return o;
 
             //decode struct
             ini_fin = DecodeByteSlice(bz, ini_fin);
