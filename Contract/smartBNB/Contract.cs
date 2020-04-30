@@ -1739,7 +1739,7 @@ namespace smartBNB
         {
             if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
 
-            int iarr = ((i-1+(sigIndex+1)*32)/slicesLen)-2;
+            int iarr = ((31+(sigIndex+1)*32)/slicesLen)-2;
 
             string bs_sb = "sb"+((BigInteger)(iarr)).AsByteArray().AsString();
             string bs_ha = "ha"+((BigInteger)(iarr)).AsByteArray().AsString();
