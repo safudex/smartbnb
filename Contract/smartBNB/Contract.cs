@@ -841,8 +841,18 @@ namespace smartBNB
 
         private static bool isProofSaved(byte[] portingContractID)
         {
-            string[] labels = {"Ps_ha", "ss_ha", "Qs_ha", "Ps_sb", "ss_sb", "Qs_sb"};
-
+            string[] labels = {STG_TYPE_GENERAL, STG_TYPE_PM, "Ps_ha", "ss_ha", "Qs_ha", "Ps_sb", "ss_sb", "Qs_sb"};
+            
+            byte[] key;
+            
+            for (int i = 0; i<2; i++)
+            {
+                key = portingContractID.Concat(labels[i].AsByteArray());
+                Runtime.Notify(key);
+                if (Storage.Get(key).Length==0)
+                    return false;
+            }
+            
             portingContractID = portingContractID.Concat(STG_TYPE_POINTMUL.AsByteArray());
             
             byte[] num = new byte[16];
@@ -851,9 +861,7 @@ namespace smartBNB
                 num[i] = i;
             }
             
-            byte[] key = portingContractID.Concat("Ps_ha".AsByteArray());
-            
-            for (int i = 0; i<labels.Length; i++)
+            for (int i = 2; i<labels.Length; i++)
             {
                 key = portingContractID.Concat(labels[i].AsByteArray());
                 for (int j = 0; j<slicesLen; j++)
@@ -1517,29 +1525,29 @@ namespace smartBNB
                 stg_key = stg_key.Concat(STG_TYPE_PM.AsByteArray());
                 
                 GeneralChallengeVariablesPM challengeVars = new GeneralChallengeVariablesPM();
-                Storage.Put("debug", "1");
+
                 challengeVars.signableBytes = (ulong[][])args[2];
-                Storage.Put("debuglen", challengeVars.signableBytes.Length);
+
                 if (challengeVars.signableBytes.Length!=8) return false;
-                Storage.Put("debug", "2");
+
                 for (int i = 0; i<8; i++)
                     if (challengeVars.signableBytes[i].Length < 4 || challengeVars.signableBytes[i].Length>1500) return false;
-                Storage.Put("debug", "3");
+
                 challengeVars.signature = (byte[][])args[3];
                 if (challengeVars.signature.Length!=8) return false;
-                Storage.Put("debug", "4");
+
                 for (int i = 0; i<8; i++)
                     if (challengeVars.signature[i].Length != 64) return false;
-                Storage.Put("debug", "5");
+
                 challengeVars.xs = (BigInteger[])args[4];
                 if (challengeVars.xs.Length!=8) return false;
-                Storage.Put("debug", "6");
+
                 challengeVars.ys = (BigInteger[])args[5];
                 if (challengeVars.ys.Length!=8) return false;
-                Storage.Put("debug", "7");
+
                 challengeVars.preHashMod = (BigInteger[])args[6];
                 if (challengeVars.preHashMod.Length!=8) return false;
-                Storage.Put("debug", "8");
+
                 Storage.Put(stg_key, ObjectToBytes(challengeVars));
                 return true;
             }
@@ -1738,11 +1746,12 @@ namespace smartBNB
         {
             if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
 
-            int iint = 31;
-            int istep = (sigIndex*32+iint)%slicesLen;
-            int iarr = (iint+sigIndex*32)/slicesLen; 
-            string bs_sb = "sb"+((BigInteger)(iarr+48)).AsByteArray().AsString();
-            string bs_ha = "ha"+((BigInteger)(iarr+48)).AsByteArray().AsString();
+            int i = 31;
+            int istep = (sigIndex*32+i)%slicesLen;
+            int iarr = ((i-1+(sigIndex+1)*32)/slicesLen)-2;
+            
+            string bs_sb = "sb"+((BigInteger)(iarr)).AsByteArray().AsString();
+            string bs_ha = "ha"+((BigInteger)(iarr)).AsByteArray().AsString();
             
             string Qbs = "Qs_"+bs_sb;
             BigInteger[][] Qssb = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
@@ -2213,7 +2222,7 @@ namespace smartBNB
             pc = getPortingContract(portingContractID);
             if(pc.ContractStatus == CONTRACT_STATUS_NULL) return false;
 
-            if (output.addr != pc.BCNAddr || pc.AmountBNB != output.amount || output.denom != pc.Denom)
+            if (output.addr.take(20) != pc.BCNAddr || pc.AmountBNB != output.amount || output.denom != pc.Denom)
                 return false;
 
             return (txProofLeafHash == getLeafHashByTxBytes(bytestx.Take(txb.Length-2)));
