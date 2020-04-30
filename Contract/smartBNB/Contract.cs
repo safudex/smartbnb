@@ -1549,10 +1549,10 @@ namespace smartBNB
                 stg_key = stg_key.Concat(STG_TYPE_POINTMUL.AsByteArray());
                 byte[] pointMulID = ((string)args[2]).AsByteArray();
                 stg_key = stg_key.Concat(pointMulID);
-                Storage.Put("debug", "9");
+
                 BigInteger[] data = (BigInteger[])args[3];
                 if (data.Length != slicesLen) return false;
-                Storage.Put("debug", "10");
+
                 Storage.Put(stg_key, ObjectToBytes(data));
                 return true;
             }
@@ -1561,13 +1561,13 @@ namespace smartBNB
                 stg_key = stg_key.Concat(STG_TYPE_POINTMUL.AsByteArray());
                 byte[] pointMulID = ((string)args[2]).AsByteArray();
                 stg_key = stg_key.Concat(pointMulID);
-                Storage.Put("debug", "11");
+
                 BigInteger[][] data = (BigInteger[][])args[3];
                 if (data.Length != slicesLen) return false;
-                Storage.Put("debug", "12");
+
                 for (int i=0; i< data.Length; i++)
                     if (data[i].Length!=4) return false;
-                Storage.Put("debug", "13");
+
                 Storage.Put(stg_key, ObjectToBytes(data));
                 return true;
             }
