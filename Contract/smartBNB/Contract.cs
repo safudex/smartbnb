@@ -1746,8 +1746,6 @@ namespace smartBNB
         {
             if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
 
-            int i = 31;
-            int istep = (sigIndex*32+i)%slicesLen;
             int iarr = ((i-1+(sigIndex+1)*32)/slicesLen)-2;
 
             string bs_sb = "sb"+((BigInteger)(iarr)).AsByteArray().AsString();
@@ -1759,8 +1757,8 @@ namespace smartBNB
             Qbs = "Qs_"+bs_ha;
             BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
 
-            BigInteger[] sB = Qssb[istep];
-            BigInteger[] hA = Qsha[istep];
+            BigInteger[] sB = Qssb[slicesLen-1];
+            BigInteger[] hA = Qsha[slicesLen-1];
 
             GeneralChallengeVariablesPM challengeVarspm = new GeneralChallengeVariablesPM();
             Object opm = getStateFromStorage(STG_TYPE_PM, stg_key, null);
