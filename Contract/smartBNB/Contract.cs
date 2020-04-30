@@ -1749,7 +1749,7 @@ namespace smartBNB
             int i = 31;
             int istep = (sigIndex*32+i)%slicesLen;
             int iarr = ((i-1+(sigIndex+1)*32)/slicesLen)-2;
-            
+
             string bs_sb = "sb"+((BigInteger)(iarr)).AsByteArray().AsString();
             string bs_ha = "ha"+((BigInteger)(iarr)).AsByteArray().AsString();
             
@@ -2222,7 +2222,17 @@ namespace smartBNB
             pc = getPortingContract(portingContractID);
             if(pc.ContractStatus == CONTRACT_STATUS_NULL) return false;
 
-            if (output.addr.take(20) != pc.BCNAddr || pc.AmountBNB != output.amount || output.denom != pc.Denom)
+             for (int i = 0; i<20; i++)
+            {
+                if (output.addr[i]!=pc.BCNAddr[i]) return false;
+            }
+            
+            for (int i = 0; i<pc.Denom.Length; i++)
+            {
+                if (output.denom[i]!=pc.Denom[i]) return false;
+            }
+            
+            if (pc.AmountBNB != output.amount)
                 return false;
 
             return (txProofLeafHash == getLeafHashByTxBytes(bytestx.Take(txb.Length-2)));
