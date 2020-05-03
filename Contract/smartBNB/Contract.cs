@@ -261,7 +261,7 @@ namespace smartBNB
             for(int i = 1; i < rateNumeratorBytes.Length; i += 1){
                 magnitude /= 2;
                 if(deltaTime >= magnitude){
-                    BigInteger rateNumerator = rateNumeratorBytes[1].AsBigInteger();
+                    BigInteger rateNumerator = rateNumeratorBytes[i].AsBigInteger();
                     amount = (amount * rateNumerator) / rateDenominator;
                     deltaTime -= magnitude;
                 }
