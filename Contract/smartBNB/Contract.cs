@@ -1,4 +1,4 @@
-using Neo.SmartContract.Framework;
+
 using Neo.SmartContract.Framework.Services.Neo;
 using Neo.SmartContract.Framework.Services.System;
 using System;
@@ -289,7 +289,7 @@ namespace smartBNB
             for(int i = 1; i < rateNumeratorBytes.Length; i += 1){
                 magnitude /= 2;
                 if(deltaTime >= magnitude){
-                    BigInteger rateNumerator = rateNumeratorBytes[1].AsBigInteger();
+                    BigInteger rateNumerator = rateNumeratorBytes[i].AsBigInteger();
 					BigInteger amountMult = amount * rateNumerator;
 					collatAccumulator += amountMult % rateDenominator;
 					amount = amountMult / rateDenominator;
