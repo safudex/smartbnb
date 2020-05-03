@@ -1951,8 +1951,6 @@ namespace smartBNB
                     Qs = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
                     sbs = "ss_"+bs;
                     ss = (BigInteger[])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, sbs);
-                    Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
-                    Qs = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
                 }
             }
             
