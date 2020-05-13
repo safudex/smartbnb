@@ -962,6 +962,7 @@ namespace smartBNB
             //getting hDataHash
             for (int i = 0; i < 8; i++)
             {
+                if(accLen>=rawHeader.Length) return false;
                 accLen += rawHeader[accLen]+1;
             }
             return VerifyTx(rawProof, rawHeader.Range(accLen+2, rawHeader[accLen]-1));
