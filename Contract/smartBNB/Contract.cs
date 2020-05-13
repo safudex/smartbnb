@@ -42,6 +42,7 @@ namespace smartBNB
         private static readonly string STG_TYPE_POINTMUL = "a";
         private static readonly string STG_TYPE_POINTMUL_SIMPLE = "SIMPLE";
         private static readonly string STG_TYPE_POINTMUL_MULTI = "MULTI";
+        private static readonly string STG_TYPE_SIGNABLEBYTES = "SIGNABLEBYTES";
 
 
         // Hardcoded, object type prefix in transfer transaction
@@ -124,7 +125,6 @@ namespace smartBNB
             public BigInteger[] xs;
             public BigInteger[] ys;
             public BigInteger[] preHashMod;
-            public ulong[][] signableBytes;
         }
 
         [Serializable]
@@ -1534,8 +1534,8 @@ namespace smartBNB
             stg_key = stg_key.Concat(state.AsByteArray());
             if (args!=null)
             {
-                byte[] pointMulID = ((string)args[0]).AsByteArray();
-                stg_key = stg_key.Concat(pointMulID);
+                byte[] id = ((string)args[0]).AsByteArray();
+                stg_key = stg_key.Concat(id);
             }
 
             byte[] stg = Storage.Get(stg_key);
@@ -1556,7 +1556,7 @@ namespace smartBNB
                 challengeVars.pre = (ulong[][])args[2];
                 if (challengeVars.pre.Length!=8) return false;
                 for (int i = 0; i<8; i++)
-                    if (challengeVars.pre[i].Length > 48 ) return false;
+                    if (challengeVars.pre[i].Length > 32 ) return false;
 
                 challengeVars.preHash = (ulong[][])args[3];
                 if (challengeVars.preHash.Length!=8) return false;
@@ -1582,29 +1582,34 @@ namespace smartBNB
                 
                 GeneralChallengeVariablesPM challengeVars = new GeneralChallengeVariablesPM();
 
-                challengeVars.signableBytes = (ulong[][])args[2];
-
-                if (challengeVars.signableBytes.Length!=8) return false;
-
-                for (int i = 0; i<8; i++)
-                    if (challengeVars.signableBytes[i].Length < 4 || challengeVars.signableBytes[i].Length>1500) return false;
-
-                challengeVars.signature = (byte[][])args[3];
+                challengeVars.signature = (byte[][])args[2];
                 if (challengeVars.signature.Length!=8) return false;
 
                 for (int i = 0; i<8; i++)
                     if (challengeVars.signature[i].Length != 64) return false;
 
-                challengeVars.xs = (BigInteger[])args[4];
+                challengeVars.xs = (BigInteger[])args[3];
                 if (challengeVars.xs.Length!=8) return false;
 
-                challengeVars.ys = (BigInteger[])args[5];
+                challengeVars.ys = (BigInteger[])args[4];
                 if (challengeVars.ys.Length!=8) return false;
 
-                challengeVars.preHashMod = (BigInteger[])args[6];
+                challengeVars.preHashMod = (BigInteger[])args[5];
                 if (challengeVars.preHashMod.Length!=8) return false;
 
                 Storage.Put(stg_key, ObjectToBytes(challengeVars));
+                return true;
+            }
+            else if (type==STG_TYPE_SIGNABLEBYTES)
+            {
+                stg_key = stg_key.Concat(type.AsByteArray());
+                byte[] id = ((string)args[2]).AsByteArray();
+                stg_key = stg_key.Concat(id);
+
+                ulong[] data = (ulong[])args[3];
+                if (data.Length > 400) return false;
+
+                Storage.Put(stg_key, ObjectToBytes(data));
                 return true;
             }
             else if (type==STG_TYPE_POINTMUL_SIMPLE)
@@ -1669,9 +1674,10 @@ namespace smartBNB
             byte[] signature = challengeVarspm.signature[sigIndex];
             BigInteger R0_xSigHigh = challengeVarspm.xs[sigIndex];
             BigInteger R1_ySigHigh = challengeVarspm.ys[sigIndex];
-            ulong[] usignableBytes = challengeVarspm.signableBytes[sigIndex];
-            byte[] signableBytes = ulongarr2bytearr(usignableBytes);
             byte[] rawHeader = challengeVars.blockHeader;
+
+            ulong[] usignableBytes = (ulong[])getStateFromStorage(STG_TYPE_SIGNABLEBYTES, stg_key, ((BigInteger)sigIndex).AsByteArray().AsString());	
+            byte[] signableBytes = ulongarr2bytearr(usignableBytes);
 
             if (signature.Length!=64)
                 return false; // Bad signature length
@@ -1733,7 +1739,7 @@ namespace smartBNB
             ulong[] pre = challengeVars.pre[sigIndex];
 
             byte[] signature = challengeVarspm.signature[sigIndex];
-            ulong[] usignableBytes = challengeVarspm.signableBytes[sigIndex];
+            ulong[] usignableBytes = (ulong[])getStateFromStorage(STG_TYPE_SIGNABLEBYTES, stg_key, ((BigInteger)sigIndex).AsByteArray().AsString());	
             int validatorIndex = (int)usignableBytes[3];
             if (validatorIndex>=11) return false;
 
@@ -1896,7 +1902,7 @@ namespace smartBNB
                 if (opm==null) return false;
                 challengeVarspm = (GeneralChallengeVariablesPM)opm;
 
-                ulong[] usignableBytes = challengeVarspm.signableBytes[sigIndex];
+                ulong[] usignableBytes = (ulong[])getStateFromStorage(STG_TYPE_SIGNABLEBYTES, stg_key, ((BigInteger)sigIndex).AsByteArray().AsString());	
 
                 int validatorIndex = (int)usignableBytes[3];
                 if (validatorIndex>=11) return false;
@@ -1985,15 +1991,10 @@ namespace smartBNB
             if (o==null) return false;
             challengeVars = (GeneralChallengeVariables)o;
 
-            GeneralChallengeVariablesPM challengeVarspm = new GeneralChallengeVariablesPM();
-            Object opm = getStateFromStorage(STG_TYPE_PM, stg_key, null);
-            if (opm==null) return false;
-            challengeVarspm = (GeneralChallengeVariablesPM)opm;
-
             byte[] txproof = challengeVars.txproof;
             byte[] blockHeader = challengeVars.blockHeader;
 
-            ulong[] usignableBytes = challengeVarspm.signableBytes[sigIndex];
+            ulong[] usignableBytes = (ulong[])getStateFromStorage(STG_TYPE_SIGNABLEBYTES, stg_key, ((BigInteger)sigIndex).AsByteArray().AsString());
 
             int[] ini_fin = new int[2];
             ini_fin[0] = (int)usignableBytes[1];
