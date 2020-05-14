@@ -96,6 +96,12 @@ index|arg|info
 2|`BigInteger AmountBNB`|Amount of sBNB to withdraw
 3|`byte[] userBCNAddr`|Binance Chain Address of the user in format convert8BitsTo5Bits(RIPEMD160(SHA256(compressed public key))
 
+  
+# Verify transaction
+To verify the signatures we splitted the verification in diferent challenges.
+TODO
+
+
 *FIPS 180-4: [https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
 
-**RFC 8032: [https://tools.ietf.org/html/rfc8032#section-6](https://tools.ietf.org/html/rfc8032#section-6)
+**RFC 8032: [https://tools.ietf.org/html/rfc8032](https://tools.ietf.org/html/rfc8032)
