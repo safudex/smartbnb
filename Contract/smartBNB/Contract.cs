@@ -553,7 +553,7 @@ namespace smartBNB
 
             BigInteger currentPrice = getCurrentPrice();
             // If collateralization ratio is lower than 1.2, liquidate collat
-            if ((collat.CollateralAmount * PRICE_DENOMINATOR * 10) < (collat.CustodiedBNB.amount * currentPrice * 12))
+            if ((collat.CollateralAmount * PRICE_DENOMINATOR * 10) < ((collat.CustodiedBNB.amount + collat.UnverifiedCustodiedBNB) * currentPrice * 12))
             {
                 liquidateCollat(collat, collatID);
                 return true;
