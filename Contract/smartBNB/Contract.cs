@@ -60,11 +60,32 @@ namespace smartBNB
 
         private static readonly byte[] PriceOracle = "ALfnhLg7rUyL6Jr98bzzoxz5J7m64fbR4s".ToScriptHash(); // TODO: Update
 
+        [DisplayName("transfer")]
+        public static event Action<byte[], byte[], BigInteger> Transferred;
+
         [DisplayName("deposited")]
         public static event Action<byte[], BigInteger> Deposited;
 
-        [DisplayName("transfer")]
-        public static event Action<byte[], byte[], BigInteger> Transferred;
+        [DisplayName("priceupdated")]
+        public static event Action<BigInteger> PriceUpdated;
+
+        [DisplayName("collatliquidated")]
+        public static event Action<byte[], BigInteger> CollatLiquidated;
+
+        [DisplayName("portrequestcreated")]
+        public static event Action<byte[], byte[], byte[], BigInteger> PortRequestCreated;
+
+        [DisplayName("withdrawrequestcreated")]
+        public static event Action<byte[], byte[], byte[], BigInteger> WithdrawRequestCreated;
+
+        [DisplayName("challengewithdrawcreated")]
+        public static event Action<byte[], byte[]> ChallengeWithdrawCreated;
+
+        [DisplayName("challengedepositcreated")]
+        public static event Action<byte[], byte[]> ChallengeDepositCreated;
+
+        [DisplayName("portingcompleted")]
+        public static event Action<byte[], byte[]> PortingCompleted;
 
         [Serializable]
         struct Balance
@@ -190,6 +211,7 @@ namespace smartBNB
                     if (!Runtime.CheckWitness(PriceOracle)) return false; // Only updatable by oracle
                     BigInteger price = (BigInteger)args[0];
                     Storage.Put("price", price);
+                    PriceUpdated(price);
                     return true;
                 }
                 else if (operation == "getCurrentPrice") return getCurrentPrice();//TODO: BY DENOM?
@@ -520,6 +542,7 @@ namespace smartBNB
                     putCollatById(collatID, collat);
 
                     TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, collateralGASTaken + DEPOSIT_CHALLENGE);
+                    PortingCompleted(collatID, portingContractID);
                 }
                 else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
                 {
@@ -531,6 +554,7 @@ namespace smartBNB
                     collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
                     collat.CollateralAmount = collat.CollateralAmount + (DEPOSIT_CHALLENGE*2) + pc.GASDeposit;
                     putCollatById(collatID, collat);
+                    PortingCompleted(collatID, portingContractID);
                 }
                 return false;
             }
@@ -573,6 +597,7 @@ namespace smartBNB
             collat.CollateralAmount -= liquidatedGAS;
             collat.CustodiedBNB.amount = 0;
             putCollatById(collatID, collat);
+            CollatLiquidated(collatID, liquidatedGAS);
         }
 
         // Register a new collat or increase/decrease the deposit of an existing one
@@ -666,6 +691,7 @@ namespace smartBNB
             putPortingContract(portingContractID, pc);
             Storage.Put("pcid", portingContractID);
             TransferCGAS(userAddr, ExecutionEngine.ExecutingScriptHash, pc.GASDeposit);
+            PortRequestCreated(collatID, portingContractID, userAddr, AmountBNB);
             return portingContractID;
         }
 
@@ -698,6 +724,7 @@ namespace smartBNB
             pc.ContractStatus = CONTRACT_STATUS_FINISHED;
             pc.LastTimestamp = Runtime.Time;
             putPortingContract(portingContractID, pc);
+            PortingCompleted(collatID, portingContractID);
 
             if (!collateralPunished)
             {
@@ -730,6 +757,8 @@ namespace smartBNB
             putPortingContract(portingContractID, pc);
             TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
 
+            byte[] collatID = portingContractID.Range(0, 40);
+            ChallengeDepositCreated(collatID, portingContractID);
             return true;
         }
 
@@ -750,6 +779,8 @@ namespace smartBNB
             putPortingContract(portingContractID, pc);
             TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
 
+            byte[] collatID = portingContractID.Range(0, 40);
+            ChallengeWithdrawCreated(collatID, portingContractID);
             return true;
         }
 
@@ -782,6 +813,7 @@ namespace smartBNB
             putPortingContract(portingContractID, pc);
 
             Burn(userAddr, AmountBNB);
+            WithdrawRequestCreated(collatID, portingContractID, userBCNAddr, AmountBNB);
             return true;
         }
 
@@ -807,6 +839,7 @@ namespace smartBNB
                     pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
                     collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
+                    PortingCompleted(collatID, portingContractID);
                 }
             }
             else if (pc.ContractStatus == CONTRACT_STATUS_PORTREQUEST)
@@ -818,6 +851,7 @@ namespace smartBNB
                     collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
                     pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
+                    PortingCompleted(collatID, portingContractID);
                 }
             }
             else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEWITHDRAW)
@@ -830,6 +864,7 @@ namespace smartBNB
                     putPortingContract(portingContractID, pc);
                     collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
                     TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.CollatAddr, DEPOSIT_CHALLENGE); // Give collat the user's security deposit
+                    PortingCompleted(collatID, portingContractID);
                 }
             }
             else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEDEPOSIT)
@@ -840,6 +875,7 @@ namespace smartBNB
                     // Validate deposit and distribute rewards
                     SuccessfulDeposit(pc, portingContractID, collat, collatID, true);
                     TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, (DEPOSIT_CHALLENGE * 2) + pc.GASDeposit);
+                    PortingCompleted(collatID, portingContractID);
                 }
             }
             else
