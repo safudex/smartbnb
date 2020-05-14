@@ -1,17 +1,14 @@
 
 # Operations
 
+For a better understanding of the interface see proof.go.
+
 **savestate**
 Any
 index|arg|info
 -|-|-
 0|`byte[] portingContractID`|Id
 1|`string type`|{"GENERAL", "PM", "SIMPLE", "MULTI", "SIGNABLEBYTES"}
-
-S0, S1, is signature0, signature1
-byte0 is first 8 bits of the message
-word0 is first 8 bytes of the hash sha512
-q = 2**252 + 27742317777372353535851937790883648493
 
 GENERAL
 index|arg|info
@@ -28,7 +25,7 @@ index|arg|info
 2|`byte[][] signatures`|Array of 8 signatures.  `[S0, S1, ...]`
 3|`bigint[] xs `|Decompressed signatures x. `[S0_x, S1_x...]`
 4|`bigint[] ys`|Decompressed signatures y. `[S0_y, S1_y...]`
-5|`bigint[] preshashmod`|Hash of signable bytes as integer ("little endian") mod q.`[sha512(signableBytesS0)%q, sha512(signableBytesS1)%q, ...]`
+5|`bigint[] preshashmod`|Hash of signable bytes as integer ("little endian") mod q. (for q see RFC8032**) `[sha512(signableBytesS0)%q, sha512(signableBytesS1)%q, ...]`
 
 SIGNABLEBYTES
 index|arg|info
@@ -39,9 +36,12 @@ index|arg|info
 POINT MUL (SIMPLE, MULTI)
 index|arg|info
 -|-|-
-3|`string id`| Point mul id {"Ps_sb", "ss_sb", "Qs_sb"} `"pointmulId + sliceNum"`
-4|`BigInteger[] data /*if simple*/ | BigInteger[][] data /*if multi*/`|
+2|`string id`| Point mul id {"Ps_sb", "ss_sb", "Qs_sb"}. `"pointmulId + sliceNum"`
+3|`BigInteger[] data /*if simple*/` <br> `BigInteger[][] data /*if multi*/`|Array of intermediate states of point mul. Each 8 iterations of the while loop in function point_mul (see: RFC 8032**) is an intermediate step
 
+<sup>S0, S1, is signature of the validator in position 0, signature of the validator in position 1
+byte0 is first 8 bits of a message
+word0 is first 8 bytes of the hash sha512</sup>
 
 **executeChallenge**
 Any
@@ -92,3 +92,4 @@ index|arg|info
 3|`byte[] userBCNAddr`|
 
 *FIPS 180-4: [https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
+**RFC 8032: [https://tools.ietf.org/html/rfc8032#section-6](https://tools.ietf.org/html/rfc8032#section-6)
