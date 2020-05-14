@@ -1,4 +1,5 @@
 
+  
 # Operations
 
 For a better understanding of the interface see proof.go.
@@ -63,37 +64,37 @@ Challenge 6
 index|arg|info
 -|-|-
 2|`int sigNum`|Signature num corresponding to the saved array in general state
-3|`int i`|
-4|`int mulid`|
+3|`int i`|Slice num {0...15}
+4|`int mulid`|Point mul id {"Ps_sb", "ss_sb", "Qs_sb"}.
 
 **registerAsCollateral**
 index|arg|info
 -|-|-
-0|`byte[] address`|
-1|`byte[] BNCAddress`|
-2|`BigInteger newAmount`|
-3|`byte  op`|
+0|`byte[] address`|NEO Address
+1|`byte[] BNCAddress`|Binance Chain Address of the collateral in format convert8BitsTo5Bits(RIPEMD160(SHA256(compressed public key))
+2|`BigInteger newAmount`|Amount to add or substract to use as collateral
+3|`byte  op`|For add 0x01, for substract 0x02
 
 **newPorting**
 index|arg|info
 -|-|-
-0|`byte[] collatID`|
-1|`byte[] userAddr`|
-2|`BigInteger amount`|
-3|`string denom`|
+0|`byte[] collatID`|Collateral id returned from registerAsCollateral
+1|`byte[] userAddr`|Neo address of the user
+2|`BigInteger amount`|Amount of sBNB requested
+3|`string denom`|Denom of the token {BNB}
 
 **ackDepositByUser | challengedeposit | challengewithdraw | unlockcollateral**
 index|arg|info
 -|-|-
-0|`byte[] portingContractID `|
+0|`byte[] portingContractID `|Porting contract id returned from newPorting
 
 **requestwithdraw**
 index|arg|info
 -|-|-
-0|`byte[] collatID`|
-1|`byte[] userAddr`|
-2|`BigInteger AmountBNB`|
-3|`byte[] userBCNAddr`|
+0|`byte[] collatID`|Collateral id
+1|`byte[] userAddr`|Neo address of the user
+2|`BigInteger AmountBNB`|Amount of sBNB to withdraw
+3|`byte[] userBCNAddr`|Binance Chain Address of the user in format convert8BitsTo5Bits(RIPEMD160(SHA256(compressed public key))
 
 *FIPS 180-4: [https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
 
