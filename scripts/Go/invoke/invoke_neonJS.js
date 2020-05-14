@@ -2,7 +2,7 @@ const fs = require('fs');
 const axios = require('axios');
 const Neon = require("@cityofzion/neon-js");
 var ECO_WALLET = new Neon.wallet.Account("KxDgvEKzgSBPPfuVfw67oPQBSjidEiqTHURKSDL1R7yGaGYAeYnr");
-var scriptHash = "d7fccdb9501bdd71db00581df8764dd92965ee2c" //const
+var scriptHash = "" //const
 const cmdArgs = process.argv.slice(2)
 const node = "https://node"+randomInt(1, 3)+".neocompiler.io"
 const api = new Neon.api.neoCli.instance(node);
@@ -23,31 +23,34 @@ async function getTxResult(txid, leftAttemps){
     return txres
 }
 
-async function invokeOperation(operation, args, gas, fees){
-    console.log(args.length)
+async function invokeOperation(operation, args, gas, fees, sh=scriptHash){
 
     let txr
     try {
-        const response = await invoke(operation, args, gas, fees)
+        const response = await invoke(operation, args, gas, fees, sh)
         txr = (await getTxResult(response.txid, 2*60)).data.result//.executions[0]
         if (!txr) {
             console.log("Attemps exhausted")
             //retry
         }
-		else
-	        console.log(txr.executions[0])//return txr
+        else{
+            console.log(txr.executions[0])//return txr
+            txr.executions[0].notifications.forEach(el => {
+                console.log(el.state.value[0].value)
+            });
+        }
     } catch (error) {
         console.log(error.message)
     }
 }
 
-async function invoke(operation, args, gas, fees){
+async function invoke(operation, args, gas, fees, sh){
     return Neon.default.doInvoke({
         api, // The API Provider that we rely on for balance and rpc information
         account: ECO_WALLET, // The sending Account
         gas, // Additional GAS for invocation.
         fees,
-        script: Neon.default.create.script({ scriptHash, operation, args })
+        script: Neon.default.create.script({ scriptHash:sh, operation, args })
     }).then(res => {return res.response})
 }
 
@@ -81,44 +84,77 @@ async function SaveState(){
 		pushParams(neonJSParams, 'Hex', portingContractID)
 		pushParams(neonJSParams, 'String', "GENERAL")
 		
-		var pres = cmdArgs[6].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
+        var pres = cmdArgs[6].split(" ").map(v => v.split(",").map(v=>Neon.sc.ContractParam.integer(maxBigInteger)))
+        for (var j = 0; j< pres.length; j++) {
+            for (var i = 0; i<32; i++) {
+                pres[j] = []//.push(pres[j][0])
+            }
+        }
+        console.log("leeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeen", pres[0].length)
         pushParams(neonJSParams, 'Array', pres);
         
 		//7 ulong[][] preshash
-		var presHash = cmdArgs[7].split(" ").map(v => v.split(",").map(Neon.sc.ContractParam.integer))
+        var presHash = cmdArgs[7].split(" ").map(v => v.split(",").map(v=>Neon.sc.ContractParam.integer(maxBigInteger)))
+        
+        console.log(presHash.length)
+        console.log(presHash[0].length)
 		pushParams(neonJSParams, 'Array', presHash);
         
-		//9 byte[] txproof
-		pushParams(neonJSParams, 'Hex', cmdArgs[9]);
+        //9 byte[] txproof
+        //console.log((cmdArgs[9]+"ff".repeat(500-196)).length)
+		pushParams(neonJSParams, 'Hex', "aa")//cmdArgs[9])//+"ff".repeat(500-98));
 		//10 byte[] blockHeader
-		pushParams(neonJSParams, 'Hex', cmdArgs[10]);
-		//11 byte[] txbytes
-		var txbytes = cmdArgs[11].split(",").map(Neon.sc.ContractParam.integer)
-		pushParams(neonJSParams, 'Array', txbytes);
+        pushParams(neonJSParams, 'Hex', "aa")//cmdArgs[10])//+"ff".repeat(400- cmdArgs[10].length/2));
 
-		await invokeOperation("savestate", neonJSParams, 50, 10)
+		//11 byte[] txbytes
+        var txbytes = cmdArgs[11].split(",").map(v=>Neon.sc.ContractParam.integer(maxBigInteger))
+        for (var i = txbytes.length; i<299; i++) {
+            txbytes.push(txbytes[0])
+        }
+        console.log(txbytes.length)
+		pushParams(neonJSParams, 'Array', txbytes);//[Neon.sc.ContractParam.integer(maxBigInteger)])
+
+        await invokeOperation("savestate", neonJSParams, 50, 10)
 
 	    neonJSParams = []	
 		//1 byte[] porting
 		pushParams(neonJSParams, 'Hex', portingContractID)
         pushParams(neonJSParams, 'String', "PM")
         
-		var signableBytes = cmdArgs[5].split(",").map(v=>v.match(/.{1,2}/g).map(v=>Neon.sc.ContractParam.integer(parseInt(v, 16))))
-        pushParams(neonJSParams, 'Array', signableBytes);
+        var signableBytes = cmdArgs[5].split(",").map(v=>v.match(/.{1,2}/g).map(v=>Neon.sc.ContractParam.integer(parseInt(v, 16))))
+
+        /*for (var j = 0; j< signableBytes.length; j++) {
+            for (var i = signableBytes[j].length; i<200; i++) {
+                signableBytes[j].push(signableBytes[j][0])
+            }
+        }*/
+//        pushParams(neonJSParams, 'Array', signableBytes);
+
         
 		var sigs = cmdArgs[2].split(",").map(v => Neon.default.create.contractParam('ByteArray', v))
 		pushParams(neonJSParams, 'Array', sigs);
 		//3 bigint[] xs
-		var xs = cmdArgs[3].split(",").map(Neon.sc.ContractParam.integer)
+		var xs = cmdArgs[3].split(",").map(v =>Neon.sc.ContractParam.integer(maxBigInteger))
 		pushParams(neonJSParams, 'Array', xs);
 		//4 bigint[] ys
-		var ys = cmdArgs[4].split(",").map(Neon.sc.ContractParam.integer)
+		var ys = cmdArgs[4].split(",").map(v =>Neon.sc.ContractParam.integer(maxBigInteger))
 		pushParams(neonJSParams, 'Array', ys);
-		var presHashMod = cmdArgs[8].split(",").map(Neon.sc.ContractParam.integer)
+		var presHashMod = cmdArgs[8].split(",").map(v =>Neon.sc.ContractParam.integer(maxBigInteger))
 		pushParams(neonJSParams, 'Array', presHashMod);
 
-		await invokeOperation("savestate", neonJSParams, 500, 100)
-var numSlices = 16
+        await invokeOperation("savestate", neonJSParams, 500, 100)
+console.log("signableBytes.length", signableBytes[0].length)
+
+        for (var j = 0; j< signableBytes.length; j++) {
+            neonJSParams = []
+            pushParams(neonJSParams, 'Hex', portingContractID)
+            pushParams(neonJSParams, 'String', "SIGNABLEBYTES")
+            pushParams(neonJSParams, 'String', ""+String.fromCharCode(j))
+            pushParams(neonJSParams, 'Array', signableBytes[j])
+            await invokeOperation("savestate", neonJSParams, 500, 100)
+        }
+return
+        var numSlices = 16
 		//state pointmul sb
 		//12 bigint[][] Qs_sb
 		//13 bigint[] ss_sb
@@ -133,16 +169,16 @@ var numSlices = 16
 		var pointMuls_ha = pointMulData[1].split(" ")
 		pointMuls_ha.map(v => {
 			var all = v.split(",")
-			ss_ha = ss_ha.concat(all.slice(0, 32).map(Neon.sc.ContractParam.integer))
-			var Qs_tmp = all.slice(32, 32+(32*4)).map(Neon.sc.ContractParam.integer)
+			ss_ha = ss_ha.concat(all.slice(0, 32).map(v =>Neon.sc.ContractParam.integer(maxBigInteger)))
+			var Qs_tmp = all.slice(32, 32+(32*4)).map(v =>Neon.sc.ContractParam.integer(maxBigInteger))
 			Qs_ha = Qs_ha.concat(arrayTo2DArray1(Qs_tmp, 4))
-			var Ps_tmp = all.slice(32+(32*4)).map(Neon.sc.ContractParam.integer)
+			var Ps_tmp = all.slice(32+(32*4)).map(v =>Neon.sc.ContractParam.integer(maxBigInteger))
 			Ps_ha = Ps_ha.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-		await savePointMuls(Ps_ha, numSlices, "Ps_ha", "MULTI")
+        /*await savePointMuls(Ps_ha, numSlices, "Ps_ha", "MULTI")
 		await savePointMuls(ss_ha, numSlices, "ss_ha", "SIMPLE")
-		await savePointMuls(Qs_ha, numSlices, "Qs_ha", "MULTI")
+		await savePointMuls(Qs_ha, numSlices, "Qs_ha", "MULTI")*/
 
 		var ss_sb = []
 		var Ps_sb=[]
@@ -150,16 +186,16 @@ var numSlices = 16
 		var pointMuls_sb = pointMulData[0].split(" ")
 		pointMuls_sb.map(v => {
 			var all = v.split(",")
-			ss_sb = ss_sb.concat(all.slice(0, 32).map(Neon.sc.ContractParam.integer))
-			var Qs_tmp = all.slice(32, 32+(32*4)).map(Neon.sc.ContractParam.integer)
+			ss_sb = ss_sb.concat(all.slice(0, 32).map(v => {return Neon.sc.ContractParam.integer(maxBigInteger)}))
+			var Qs_tmp = all.slice(32, 32+(32*4)).map(v =>Neon.sc.ContractParam.integer(maxBigInteger))
 			Qs_sb = Qs_sb.concat(arrayTo2DArray1(Qs_tmp, 4))
-			var Ps_tmp = all.slice(32+(32*4)).map(Neon.sc.ContractParam.integer)
+			var Ps_tmp = all.slice(32+(32*4)).map(v =>Neon.sc.ContractParam.integer(maxBigInteger))
 			Ps_sb = Ps_sb.concat(arrayTo2DArray1(Ps_tmp, 4))
 		})
 
-		await savePointMuls(Ps_sb, numSlices, "Ps_sb", "MULTI")
+		/*await savePointMuls(Ps_sb, numSlices, "Ps_sb", "MULTI")
 		await savePointMuls(ss_sb, numSlices, "ss_sb", "SIMPLE")
-		await savePointMuls(Qs_sb, numSlices, "Qs_sb", "MULTI")
+		await savePointMuls(Qs_sb, numSlices, "Qs_sb", "MULTI")*/
 }
 
 async function savePointMuls(arr, nchks, id, type) {
@@ -229,18 +265,22 @@ function executeChallenge(challengeNum){
     //1 byte[] portingContractID
   //  pushParams(neonJSParams, 'Address', ECO_WALLET._address);
 	pushParams(neonJSParams, 'Hex', portingContractID)
-    pushParams(neonJSParams, 'Integer', 6)
+    pushParams(neonJSParams, 'Integer', 7)
     pushParams(neonJSParams, 'Integer', 1)
+    //pushParams(neonJSParams, 'String', ""+String.fromCharCode(0))
     pushParams(neonJSParams, 'Integer', 0)
-    pushParams(neonJSParams, 'String', "ha")
+    pushParams(neonJSParams, 'String', "sb")
 
-    invokeOperation("executeChallenge", neonJSParams, 155, 10)
+    invokeOperation("executeChallenge", neonJSParams, 200, 10)
 }
 
 collatid = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 portingContractID = "23ba2703c53263e8d6e522dc32203339dcd8eee9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa23ba2703c53263e8d6e522dc32203339dcd8eee9bbbe885e"
-scriptHash = "abd5a276856ba2f346a8326dc0dfe90777668cc1"
+scriptHash = "c1384e12e410cc6a58677324b5ac14ad255684e4"
 
+var neonJSParams = [];
+var s = "2fffffffffffffffff"//.repeat(7)
+var maxBigInteger = parseInt(s, 16)
 //RegisterAsCollateral()
 //NewPorting()
 //challengeDeposit()
@@ -248,7 +288,8 @@ scriptHash = "abd5a276856ba2f346a8326dc0dfe90777668cc1"
 executeChallenge("1");//param commented in function
 //pointmulchallenge num = 6
 //initialchecks num =1
-
+//pushParams(neonJSParams, 'Integer', parseInt(s, 16))
+//invokeOperation("hi", neonJSParams, 50, 10, "367514d58a867ceabd4c4522a661d999af72e8b3")
 
 //ackUserDepositPorting()
 //unlockCollateral()
@@ -257,5 +298,5 @@ executeChallenge("1");//param commented in function
 //IsSaved()
 //RemoveStorage()
 //VerifyTxOutput()
-
+//MAX BYTE ARRAY = "FF"*65507
 //challengeWithdraw();
