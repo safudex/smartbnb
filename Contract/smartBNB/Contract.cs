@@ -95,7 +95,7 @@ namespace smartBNB
         }
 
         [Serializable]
-        public struct PortingContract
+        struct PortingContract
         {
             public byte ContractStatus;
             public byte[] BCNAddr;
@@ -108,7 +108,7 @@ namespace smartBNB
         }
 
         [Serializable]
-        public struct Collat
+        struct Collat
         {
             public byte[] Address;
             public byte[] BNCAddress;
@@ -594,8 +594,9 @@ namespace smartBNB
             BigInteger unbackedBNB = Storage.Get("unbackedBNB").AsBigInteger();
             Storage.Put("unbackedBNB", unbackedBNB + collat.CustodiedBNB.amount);
 
-            collat.CollateralAmount -= liquidatedGAS;
-            collat.CustodiedBNB.amount = 0;
+            collat.CollateralAmount = collat.CollateralAmount - liquidatedGAS;
+            Balance collatBal = collat.CustodiedBNB;
+            collatBal.amount = 0;
             putCollatById(collatID, collat);
             CollatLiquidated(collatID, liquidatedGAS);
         }
@@ -683,7 +684,7 @@ namespace smartBNB
             pc.ContractStatus = CONTRACT_STATUS_PORTREQUEST;
             pc.CollatAddr = collatID.Range(0, 20);
             pc.BCNAddr = collat.BNCAddress;
-            pc.UserAddr=userAddr;
+            pc.UserAddr = userAddr;
             pc.AmountBNB = AmountBNB;
             pc.LastTimestamp = timestamp;
             pc.GASDeposit = collateralAmountNedeed/FACTOR_PORTREQUEST_DIVISOR;
@@ -731,8 +732,9 @@ namespace smartBNB
                 collat.CollateralAmount = collat.CollateralAmount + DEPOSIT_CHALLENGE;
             }
 			// Move bnb from unverified to verified
-			collat.CustodiedBNB.amount += pc.AmountBNB;
-			collat.UnverifiedCustodiedBNB -= pc.AmountBNB;
+			Balance collatBal = collat.CustodiedBNB;
+			collatBal.amount = collatBal.amount + pc.AmountBNB;
+			collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
 			putCollatById(collatID, collat);
 
             Mint(pc.UserAddr, pc.AmountBNB, pc.Denom);
@@ -793,9 +795,10 @@ namespace smartBNB
             collat = getCollatById(collatID);
             if (collat.Address.Length == 0) return false;
 			// Move the equivalent BNB on Collat to the pool of frozen UnverifiedCustodiedBNB
-			if (collat.CustodiedBNB.amount < AmountBNB) return false;
-			collat.CustodiedBNB.amount -= AmountBNB;
-			collat.UnverifiedCustodiedBNB += AmountBNB;
+			Balance collatBal = collat.CustodiedBNB;
+			if (collatBal.amount < AmountBNB) return false;
+			collatBal.amount = collatBal.amount - AmountBNB;
+			collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB + AmountBNB;
 			putCollatById(collatID, collat);
 
             BigInteger timestamp = Runtime.Time;
