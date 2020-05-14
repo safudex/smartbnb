@@ -4,6 +4,7 @@
 For a better understanding of the interface see proof.go.
 
 **savestate**
+
 Any
 index|arg|info
 -|-|-
@@ -40,10 +41,13 @@ index|arg|info
 3|`BigInteger[] data /*if simple*/` <br> `BigInteger[][] data /*if multi*/`|Array of intermediate states of point mul. Each 8 iterations of the while loop in function point_mul (see: RFC 8032**) is an intermediate step
 
 <sup>S0, S1, is signature of the validator in position 0, signature of the validator in position 1
+  
 byte0 is first 8 bits of a message
+
 word0 is first 8 bytes of the hash sha512</sup>
 
 **executeChallenge**
+
 Any
 index|arg|info
 -|-|-
@@ -92,4 +96,5 @@ index|arg|info
 3|`byte[] userBCNAddr`|
 
 *FIPS 180-4: [https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
+
 **RFC 8032: [https://tools.ietf.org/html/rfc8032#section-6](https://tools.ietf.org/html/rfc8032#section-6)
