@@ -7,3 +7,4 @@
 - Deploy the updated Contract.cs to MainNet or TestNet
 - Deploy a [price oracle for your token](https://github.com/corollari/neo-oracle)
 - Deploy a collateral provider
+- Deploy a system that arbitrages liquidated collateral
