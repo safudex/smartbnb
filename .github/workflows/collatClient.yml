@@ -8,9 +8,9 @@ jobs:
   lint-test:
 
     runs-on: ubuntu-latest
-
-    env:
-      working-directory: ./collatClient
+    defaults:
+      run:
+        working-directory: ./collatClient
 
     steps:
     - uses: actions/checkout@v2
