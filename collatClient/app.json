@@ -1,0 +1,16 @@
+{
+  "name": "smartBNB collateral provider",
+  "description": "Server software for collateral providers",
+  "repository": "https://github.com/safudex/smartbnb",
+  "env": {
+    "PRIVATE_KEY": {
+      "description": "Private key"
+    },
+    "CONTRACT_SCRIPTHASH": {
+      "description": "Scripthash of the deployed contract"
+    },
+    "BNC_TICKER": {
+      "description": "Ticker of the BEP2 token on Binance Chain"
+    }
+  }
+}
