@@ -61,11 +61,32 @@ namespace smartBNB
 
         private static readonly byte[] PriceOracle = "ALfnhLg7rUyL6Jr98bzzoxz5J7m64fbR4s".ToScriptHash(); // TODO: Update
 
+        [DisplayName("transfer")]
+        public static event Action<byte[], byte[], BigInteger> Transferred;
+
         [DisplayName("deposited")]
         public static event Action<byte[], BigInteger> Deposited;
 
-        [DisplayName("transfer")]
-        public static event Action<byte[], byte[], BigInteger> Transferred;
+        [DisplayName("priceupdated")]
+        public static event Action<BigInteger> PriceUpdated;
+
+        [DisplayName("collatliquidated")]
+        public static event Action<byte[], BigInteger> CollatLiquidated;
+
+        [DisplayName("portrequestcreated")]
+        public static event Action<byte[], byte[], byte[], BigInteger> PortRequestCreated;
+
+        [DisplayName("withdrawrequestcreated")]
+        public static event Action<byte[], byte[], byte[], BigInteger> WithdrawRequestCreated;
+
+        [DisplayName("challengewithdrawcreated")]
+        public static event Action<byte[], byte[]> ChallengeWithdrawCreated;
+
+        [DisplayName("challengedepositcreated")]
+        public static event Action<byte[], byte[]> ChallengeDepositCreated;
+
+        [DisplayName("portingcompleted")]
+        public static event Action<byte[], byte[]> PortingCompleted;
 
         [Serializable]
         struct Balance
@@ -75,7 +96,7 @@ namespace smartBNB
         }
 
         [Serializable]
-        public struct PortingContract
+        struct PortingContract
         {
             public byte ContractStatus;
             public byte[] BCNAddr;
@@ -88,12 +109,13 @@ namespace smartBNB
         }
 
         [Serializable]
-        public struct Collat
+        struct Collat
         {
             public byte[] Address;
             public byte[] BNCAddress;
             public BigInteger CollateralAmount;
-            public BigInteger CustodiedBNB;
+            public Balance CustodiedBNB;
+			public BigInteger UnverifiedCustodiedBNB;
         }
 
         [Serializable]
@@ -189,6 +211,7 @@ namespace smartBNB
                     if (!Runtime.CheckWitness(PriceOracle)) return false; // Only updatable by oracle
                     BigInteger price = (BigInteger)args[0];
                     Storage.Put("price", price);
+                    PriceUpdated(price);
                     return true;
                 }
                 else if (operation == "getCurrentPrice") return getCurrentPrice();//TODO: BY DENOM?
@@ -220,9 +243,12 @@ namespace smartBNB
             }
         }
 
-        // DO NOT USE TO UPDATE COLLATERAL'S BALANCES, this function is an approximation of the real function and, as such, will always return a value lower than what the real function would. Although the difference is really small, this could be used by collaterals to reduce their collateral faster than permitted.
-        private static BigInteger updateAmount(BigInteger amount, BigInteger lastTransfer, BigInteger currentTime){
+        // WHEN USED TO UPDATE COLLATERAL'S BALANCES collateralBalance should be set to true, this is because this function is an approximation of the real function and, as such, will always return a value lower than what the real function would. Although the difference is really small, this could be used by collaterals to reduce their collateral faster than permitted. collateralBalance makes sure that the result is always higher than the theoretical perfect value of that function, so its impossible for collaterals to take advantage of that.
+        // collateralBalance = true  -> approximatedResult >= realResult
+        // collateralBalance = false -> approximatedResult <= realResult
+        private static BigInteger updateAmount(BigInteger amount, BigInteger lastTransfer, BigInteger currentTime, bool collateralBalance){
             BigInteger deltaTime = currentTime - lastTransfer;
+			BigInteger collatAccumulator = 0;
 
 			// Code generated with NEP5interest.py, it essentially calculates the interest as in percentage^deltaTime in logarithmic time by using pre-computed constants
 			byte[] rateDenominatorBytes = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -255,24 +281,31 @@ namespace smartBNB
 
 			while(deltaTime >= magnitude){
 				BigInteger rateNumerator = rateNumeratorBytes[0].AsBigInteger();
-				amount = (amount * rateNumerator) / rateDenominator;
+				BigInteger amountMult = amount * rateNumerator;
+				collatAccumulator += amountMult % rateDenominator;
+				amount = amountMult / rateDenominator;
 				deltaTime -= magnitude;
 			}
             for(int i = 1; i < rateNumeratorBytes.Length; i += 1){
                 magnitude /= 2;
                 if(deltaTime >= magnitude){
                     BigInteger rateNumerator = rateNumeratorBytes[i].AsBigInteger();
-                    amount = (amount * rateNumerator) / rateDenominator;
+                    BigInteger amountMult = amount * rateNumerator;
+                    collatAccumulator += amountMult % rateDenominator;
+                    amount = amountMult / rateDenominator;
                     deltaTime -= magnitude;
                 }
             }
+			if(collateralBalance == true){
+				amount += collatAccumulator;
+			}
 
             return amount;
         }
 
-        private static Balance updateBalance(Balance bal){
+        private static Balance updateBalance(Balance bal, bool collatBal){
             BigInteger currentTime = Runtime.Time;
-            bal.amount = updateAmount(bal.amount, bal.lastTimeTransfered, currentTime);
+            bal.amount = updateAmount(bal.amount, bal.lastTimeTransfered, currentTime, collatBal);
             bal.lastTimeTransfered = currentTime;
             return bal;
         }
@@ -284,7 +317,7 @@ namespace smartBNB
                 throw new Exception("The parameter account SHOULD be 20-byte addresses.");
             StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
             Balance bal = deserializeBalance(asset.Get(account));
-            return updateAmount(bal.amount, bal.lastTimeTransfered, Runtime.Time);
+            return updateAmount(bal.amount, bal.lastTimeTransfered, Runtime.Time, false);
         }
 
         [DisplayName("decimals")]
@@ -331,7 +364,7 @@ namespace smartBNB
             if (!Runtime.CheckWitness(from) && from.AsBigInteger() != callscript.AsBigInteger())
                 return false;
             StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
-            Balance fromBalance = updateBalance(deserializeBalance(asset.Get(from)));
+            Balance fromBalance = updateBalance(deserializeBalance(asset.Get(from)), false);
             if (fromBalance.amount < amount)
                 return false;
             if (from == to)
@@ -346,7 +379,7 @@ namespace smartBNB
             }
 
             //Increase the payee balance
-            Balance toBalance = updateBalance(deserializeBalance(asset.Get(to)));
+            Balance toBalance = updateBalance(deserializeBalance(asset.Get(to)), false);
             toBalance.amount = toBalance.amount + amount;
             asset.Put(to, Helper.Serialize(toBalance));
 
@@ -378,7 +411,7 @@ namespace smartBNB
         {
             if (amount <= 0) throw new Exception("Burning non-existing sBNB");
             StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
-            Balance toBalance = updateBalance(deserializeBalance(asset.Get(to)));
+            Balance toBalance = updateBalance(deserializeBalance(asset.Get(to)), false);
             toBalance.amount = toBalance.amount + amount;
             asset.Put(to, Helper.Serialize(toBalance));
 
@@ -389,7 +422,7 @@ namespace smartBNB
         private static void Burn(byte[] from, BigInteger amount)
         {
             StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
-            Balance fromBalance = updateBalance(deserializeBalance(asset.Get(from)));
+            Balance fromBalance = updateBalance(deserializeBalance(asset.Get(from)), false);
             if (amount > fromBalance.amount || amount <= 0) throw new Exception("Burning non-existing sBNB");
             fromBalance.amount = fromBalance.amount - amount;
             asset.Put(from, Helper.Serialize(fromBalance));
@@ -403,8 +436,11 @@ namespace smartBNB
             byte[] collat = collats.Get(collatID);
             
             if (collat.Length == 0) return new Collat{ Address = new byte[0] };
+
+			Collat desCollat = (Collat)Helper.Deserialize(collat);
+			desCollat.CustodiedBNB = updateBalance(desCollat.CustodiedBNB, true);
             
-            return (Collat)Helper.Deserialize(collat);
+            return desCollat;
         }
 
         private static void putCollatById(byte[] collatID, Collat collat)
@@ -500,12 +536,13 @@ namespace smartBNB
                     pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
 
-                    BigInteger collateralGASTaken = (pc.AmountBNB * collat.CollateralAmount)/collat.CustodiedBNB;
+                    BigInteger collateralGASTaken = (pc.AmountBNB * collat.CollateralAmount)/(collat.UnverifiedCustodiedBNB + collat.CustodiedBNB.amount);
                     collat.CollateralAmount = collat.CollateralAmount - collateralGASTaken;
-                    collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
+                    collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
                     putCollatById(collatID, collat);
 
                     TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, collateralGASTaken + DEPOSIT_CHALLENGE);
+                    PortingCompleted(collatID, portingContractID);
                 }
                 else if (pc.ContractStatus==CONTRACT_STATUS_CHALLENGEDEPOSIT)
                 {
@@ -514,9 +551,10 @@ namespace smartBNB
                     pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
 
-                    collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
+                    collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
                     collat.CollateralAmount = collat.CollateralAmount + (DEPOSIT_CHALLENGE*2) + pc.GASDeposit;
                     putCollatById(collatID, collat);
+                    PortingCompleted(collatID, portingContractID);
                 }
                 return false;
             }
@@ -539,7 +577,7 @@ namespace smartBNB
 
             BigInteger currentPrice = getCurrentPrice();
             // If collateralization ratio is lower than 1.2, liquidate collat
-            if ((collat.CollateralAmount * PRICE_DENOMINATOR * 10) < (collat.CustodiedBNB * currentPrice * 12))
+            if ((collat.CollateralAmount * PRICE_DENOMINATOR * 10) < ((collat.CustodiedBNB.amount + collat.UnverifiedCustodiedBNB) * currentPrice * 12))
             {
                 liquidateCollat(collat, collatID);
                 return true;
@@ -547,15 +585,20 @@ namespace smartBNB
             return false;
         }
         
+		// Liquidate a collateral's holdings
+		// Note that the collateral associated with unverified custodied bnb are not removed because if we were to do that the current porting processes would have it's underlying collateral disappear -> attack vector
         private static void liquidateCollat(Collat collat, byte[] collatID){
             BigInteger lostCollateralGAS = Storage.Get("lostCollateralGAS").AsBigInteger();
-            Storage.Put("lostCollateralGAS", lostCollateralGAS + collat.CollateralAmount);
+			BigInteger liquidatedGAS = (collat.CollateralAmount * collat.CustodiedBNB.amount)/(collat.CustodiedBNB.amount + collat.UnverifiedCustodiedBNB); // Calculate the GAS collateral associated with verified BNB in custody
+            Storage.Put("lostCollateralGAS", lostCollateralGAS + liquidatedGAS);
             BigInteger unbackedBNB = Storage.Get("unbackedBNB").AsBigInteger();
-            Storage.Put("unbackedBNB", unbackedBNB + collat.CustodiedBNB);
+            Storage.Put("unbackedBNB", unbackedBNB + collat.CustodiedBNB.amount);
 
-            collat.CollateralAmount = 0;
-            collat.CustodiedBNB = 0;
+            collat.CollateralAmount = collat.CollateralAmount - liquidatedGAS;
+            Balance collatBal = collat.CustodiedBNB;
+            collatBal.amount = 0;
             putCollatById(collatID, collat);
+            CollatLiquidated(collatID, liquidatedGAS);
         }
 
         // Register a new collat or increase/decrease the deposit of an existing one
@@ -607,7 +650,7 @@ namespace smartBNB
 
         private static BigInteger calculateCollateralAmountLeft(Collat collat, BigInteger currentPrice)
         {
-            return collat.CollateralAmount - calculateGASCollateralAmount(collat.CustodiedBNB, currentPrice);
+            return collat.CollateralAmount - calculateGASCollateralAmount(collat.CustodiedBNB.amount + collat.UnverifiedCustodiedBNB, currentPrice);
         }
 
         //TODO: RETURN PRICE BY DENOM (BNB, ...BEP2)
@@ -629,7 +672,7 @@ namespace smartBNB
 
             BigInteger collateralAmountNedeed = calculateGASCollateralAmount(AmountBNB, currentPrice) + DEPOSIT_CHALLENGE; // Get the amount needed in GAS
             if(calculateCollateralAmountLeft(collat, currentPrice) < collateralAmountNedeed) return new byte[0];
-            collat.CustodiedBNB = collat.CustodiedBNB + AmountBNB;
+            collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB + AmountBNB;
             collat.CollateralAmount = collat.CollateralAmount - DEPOSIT_CHALLENGE;
             putCollatById(collatID, collat);
 
@@ -641,7 +684,7 @@ namespace smartBNB
             pc.ContractStatus = CONTRACT_STATUS_PORTREQUEST;
             pc.CollatAddr = collatID.Range(0, 20);
             pc.BCNAddr = collat.BNCAddress;
-            pc.UserAddr=userAddr;
+            pc.UserAddr = userAddr;
             pc.AmountBNB = AmountBNB;
             pc.LastTimestamp = timestamp;
             pc.GASDeposit = collateralAmountNedeed/FACTOR_PORTREQUEST_DIVISOR;
@@ -649,6 +692,7 @@ namespace smartBNB
             putPortingContract(portingContractID, pc);
             Storage.Put("pcid", portingContractID);
             TransferCGAS(userAddr, ExecutionEngine.ExecutingScriptHash, pc.GASDeposit);
+            PortRequestCreated(collatID, portingContractID, userAddr, AmountBNB);
             return portingContractID;
         }
 
@@ -681,12 +725,17 @@ namespace smartBNB
             pc.ContractStatus = CONTRACT_STATUS_FINISHED;
             pc.LastTimestamp = Runtime.Time;
             putPortingContract(portingContractID, pc);
+            PortingCompleted(collatID, portingContractID);
 
             if (!collateralPunished)
             {
                 collat.CollateralAmount = collat.CollateralAmount + DEPOSIT_CHALLENGE;
-                putCollatById(collatID, collat);
             }
+			// Move bnb from unverified to verified
+			Balance collatBal = collat.CustodiedBNB;
+			collatBal.amount = collatBal.amount + pc.AmountBNB;
+			collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
+			putCollatById(collatID, collat);
 
             Mint(pc.UserAddr, pc.AmountBNB, pc.Denom);
         }
@@ -710,6 +759,8 @@ namespace smartBNB
             putPortingContract(portingContractID, pc);
             TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
 
+            byte[] collatID = portingContractID.Range(0, 40);
+            ChallengeDepositCreated(collatID, portingContractID);
             return true;
         }
 
@@ -730,6 +781,8 @@ namespace smartBNB
             putPortingContract(portingContractID, pc);
             TransferCGAS(pc.UserAddr, ExecutionEngine.ExecutingScriptHash, DEPOSIT_CHALLENGE);
 
+            byte[] collatID = portingContractID.Range(0, 40);
+            ChallengeWithdrawCreated(collatID, portingContractID);
             return true;
         }
 
@@ -741,6 +794,12 @@ namespace smartBNB
             Collat collat = new Collat();
             collat = getCollatById(collatID);
             if (collat.Address.Length == 0) return false;
+			// Move the equivalent BNB on Collat to the pool of frozen UnverifiedCustodiedBNB
+			Balance collatBal = collat.CustodiedBNB;
+			if (collatBal.amount < AmountBNB) return false;
+			collatBal.amount = collatBal.amount - AmountBNB;
+			collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB + AmountBNB;
+			putCollatById(collatID, collat);
 
             BigInteger timestamp = Runtime.Time;
             byte[] portingContractID = collatID.Concat(userAddr).Concat(timestamp.AsByteArray());
@@ -757,6 +816,7 @@ namespace smartBNB
             putPortingContract(portingContractID, pc);
 
             Burn(userAddr, AmountBNB);
+            WithdrawRequestCreated(collatID, portingContractID, userBCNAddr, AmountBNB);
             return true;
         }
 
@@ -781,7 +841,8 @@ namespace smartBNB
                     // Withdraw succesful, liberate collateral
                     pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
-                    collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
+                    collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
+                    PortingCompleted(collatID, portingContractID);
                 }
             }
             else if (pc.ContractStatus == CONTRACT_STATUS_PORTREQUEST)
@@ -790,9 +851,10 @@ namespace smartBNB
                 {
                     // User has not sent the BNB (no challenge -> we assume no BNB was sent)
                     collat.CollateralAmount = collat.CollateralAmount + DEPOSIT_CHALLENGE + pc.GASDeposit;
-                    collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
+                    collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
                     pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
+                    PortingCompleted(collatID, portingContractID);
                 }
             }
             else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEWITHDRAW)
@@ -803,8 +865,9 @@ namespace smartBNB
                     // Collat wins, withdraw successful
                     pc.ContractStatus = CONTRACT_STATUS_FINISHED;
                     putPortingContract(portingContractID, pc);
-                    collat.CustodiedBNB = collat.CustodiedBNB - pc.AmountBNB;
+                    collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
                     TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.CollatAddr, DEPOSIT_CHALLENGE); // Give collat the user's security deposit
+                    PortingCompleted(collatID, portingContractID);
                 }
             }
             else if (pc.ContractStatus == CONTRACT_STATUS_CHALLENGEDEPOSIT)
@@ -815,8 +878,8 @@ namespace smartBNB
                     // Validate deposit and distribute rewards
                     SuccessfulDeposit(pc, portingContractID, collat, collatID, true);
                     TransferCGAS(ExecutionEngine.ExecutingScriptHash, pc.UserAddr, (DEPOSIT_CHALLENGE * 2) + pc.GASDeposit);
+                    PortingCompleted(collatID, portingContractID);
                 }
-
             }
             else
             {

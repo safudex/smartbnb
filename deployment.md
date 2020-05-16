@@ -1,0 +1,10 @@
+- Change the following constants inside Contract.cs:
+	- PriceOracle (you will need to generate the private key to be used in the oracle contract)
+	- Denom
+	- Name()
+	- Symbol()
+- Deploy a full node along with [NeoPubSub](https://github.com/corollari/neo-PubSub)
+- Deploy the updated Contract.cs to MainNet or TestNet
+- Deploy a [price oracle for your token](https://github.com/corollari/neo-oracle)
+- Deploy a collateral provider
+- Deploy a system that arbitrages liquidated collateral
