@@ -35,7 +35,7 @@ namespace smartBNB
         // See https://docs.tendermint.com/master/spec/blockchain/encoding.html#merkle-trees
         private static readonly byte[] leafPrefix = { 0x00 };
         private static readonly byte[] innerPrefix = { 0x01 };
-        private static readonly int slicesLen = 16;
+        private static readonly int SLICESLEN = 16;
 
         private static readonly string STG_TYPE_GENERAL = "GENERAL";
         private static readonly string STG_TYPE_PM = "PM";
@@ -47,6 +47,9 @@ namespace smartBNB
 
         // Hardcoded, object type prefix in transfer transaction
         private static readonly byte[] TX_TRANSFER_PREFIX = {0x2A, 0x2C, 0x87, 0xFA};
+
+        // Denomitaion of the token
+        private static readonly byte[] DENOM = {0x42, 0x4E, 0x42};//"BNB"
 
         private static readonly byte[] byteP =  {0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f};
 
@@ -206,7 +209,7 @@ namespace smartBNB
                     Storage.Put("r", r?"true":"false");
                     return r;
                 }
-                else if (operation=="updatepriceoracle")//TODO: BY DENOM?
+                else if (operation=="updatepriceoracle")
                 {
                     if (!Runtime.CheckWitness(PriceOracle)) return false; // Only updatable by oracle
                     BigInteger price = (BigInteger)args[0];
@@ -214,7 +217,7 @@ namespace smartBNB
                     PriceUpdated(price);
                     return true;
                 }
-                else if (operation == "getCurrentPrice") return getCurrentPrice();//TODO: BY DENOM?
+                else if (operation == "getCurrentPrice") return getCurrentPrice();
                 else if (operation == "balanceOf") return BalanceOf((byte[])args[0]);
                 else if (operation == "decimals") return Decimals();
                 else if (operation == "name") return Name();
@@ -406,8 +409,7 @@ namespace smartBNB
             return true;
         }
 
-        //TODO: MINT BY DENOM
-        private static void Mint(byte[] to, BigInteger amount, string denom)
+        private static void Mint(byte[] to, BigInteger amount)
         {
             if (amount <= 0) throw new Exception("Burning non-existing sBNB");
             StorageMap asset = Storage.CurrentContext.CreateMap(nameof(asset));
@@ -653,12 +655,11 @@ namespace smartBNB
             return collat.CollateralAmount - calculateGASCollateralAmount(collat.CustodiedBNB.amount + collat.UnverifiedCustodiedBNB, currentPrice);
         }
 
-        //TODO: RETURN PRICE BY DENOM (BNB, ...BEP2)
         private static BigInteger getCurrentPrice(){
             return Storage.Get("price").AsBigInteger();
         }
 
-        private static byte[] RequestNewPorting(byte[] collatID, byte[] userAddr, BigInteger AmountBNB, string denom)
+        private static byte[] RequestNewPorting(byte[] collatID, byte[] userAddr, BigInteger AmountBNB)
         {
             if (!Runtime.CheckWitness(userAddr)) return new byte[0];
 
@@ -688,7 +689,6 @@ namespace smartBNB
             pc.AmountBNB = AmountBNB;
             pc.LastTimestamp = timestamp;
             pc.GASDeposit = collateralAmountNedeed/FACTOR_PORTREQUEST_DIVISOR;
-            pc.Denom = denom;
             putPortingContract(portingContractID, pc);
             Storage.Put("pcid", portingContractID);
             TransferCGAS(userAddr, ExecutionEngine.ExecutingScriptHash, pc.GASDeposit);
@@ -737,7 +737,7 @@ namespace smartBNB
 			collat.UnverifiedCustodiedBNB = collat.UnverifiedCustodiedBNB - pc.AmountBNB;
 			putCollatById(collatID, collat);
 
-            Mint(pc.UserAddr, pc.AmountBNB, pc.Denom);
+            Mint(pc.UserAddr, pc.AmountBNB);
         }
 
         private static bool ChallengeDeposit(byte[] portingContractID)
@@ -920,7 +920,7 @@ namespace smartBNB
             for (int i = 2; i<labels.Length; i++)
             {
                 key = portingContractID.Concat(labels[i].AsByteArray());
-                for (int j = 0; j<slicesLen; j++)
+                for (int j = 0; j<SLICESLEN; j++)
                 {
                     if (Storage.Get(key.Concat(num.Range(j, 1).Take(1))).Length==0)
                         return false;
@@ -1620,7 +1620,7 @@ namespace smartBNB
                 stg_key = stg_key.Concat(pointMulID);
 
                 BigInteger[] data = (BigInteger[])args[3];
-                if (data.Length != slicesLen) return false;
+                if (data.Length != SLICESLEN) return false;
 
                 Storage.Put(stg_key, ObjectToBytes(data));
                 return true;
@@ -1632,7 +1632,7 @@ namespace smartBNB
                 stg_key = stg_key.Concat(pointMulID);
 
                 BigInteger[][] data = (BigInteger[][])args[3];
-                if (data.Length != slicesLen) return false;
+                if (data.Length != SLICESLEN) return false;
 
                 for (int i=0; i< data.Length; i++)
                     if (data[i].Length!=4) return false;
@@ -1809,7 +1809,7 @@ namespace smartBNB
         {
             if (sigIndex >= 8 || sigIndex < 0 ) throw new Exception("Must be 0-7");
 
-            int iarr = ((31+(sigIndex+1)*32)/slicesLen)-2;
+            int iarr = ((31+(sigIndex+1)*32)/SLICESLEN)-2;
 
             string bs_sb = "sb"+((BigInteger)(iarr)).AsByteArray().AsString();
             string bs_ha = "ha"+((BigInteger)(iarr)).AsByteArray().AsString();
@@ -1820,8 +1820,8 @@ namespace smartBNB
             Qbs = "Qs_"+bs_ha;
             BigInteger[][] Qsha = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Qbs);
 
-            BigInteger[] sB = Qssb[slicesLen-1];
-            BigInteger[] hA = Qsha[slicesLen-1];
+            BigInteger[] sB = Qssb[SLICESLEN-1];
+            BigInteger[] hA = Qsha[SLICESLEN-1];
 
             GeneralChallengeVariablesPM challengeVarspm = new GeneralChallengeVariablesPM();
             Object opm = getStateFromStorage(STG_TYPE_PM, stg_key, null);
@@ -1881,7 +1881,7 @@ namespace smartBNB
             };
 
             int temp = i==0?1:i;
-            int iarr = ((temp-1+(sigIndex+1)*32)/slicesLen)-2;
+            int iarr = ((temp-1+(sigIndex+1)*32)/SLICESLEN)-2;
             string bs = mulid+((BigInteger)(iarr)).AsByteArray().AsString();
 
             string Pbs = "Ps_"+bs;
@@ -2089,7 +2089,7 @@ namespace smartBNB
         {
             public byte[] addr;
             public BigInteger amount;
-            public string denom;
+            public byte[] denom;
         }
 
         //unmarshal
@@ -2190,7 +2190,7 @@ namespace smartBNB
                 b=(byte)bz[ass_ini_fin[0]+i];
                 asset[i] = b;
             }
-            o.denom = asset.AsString();
+            o.denom = asset;
 
             if(ass_ini_fin[1]+2>=bz.Length) return o;
             //slide till amount
@@ -2281,9 +2281,9 @@ namespace smartBNB
                 if (output.addr[i]!=pc.BCNAddr[i]) return false;
             }
             
-            for (int i = 0; i<pc.Denom.Length; i++)
+            for (int i = 0; i<DENOM.Length; i++)
             {
-                if (output.denom[i]!=pc.Denom[i]) return false;
+                if (output.denom[i]!=DENOM[i]) return false;
             }
             
             if (pc.AmountBNB != output.amount)
