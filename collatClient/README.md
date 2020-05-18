@@ -1,5 +1,5 @@
-# NEO Oracle
-> Price oracle for NEO smart contracts
+# Collateral Provider Client
+> An implementation of a client for collateral providers
 
 ## Set up
 1. Create a private key with any NEO wallet (eg: [ansy](https://snowypowers.github.io/ansy/))
