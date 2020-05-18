@@ -19,5 +19,6 @@ jobs:
       with:
         node-version: '11.x'
     - run: npm ci
+    - run: npm run build
     - run: npm run checklint
     - run: npm test
