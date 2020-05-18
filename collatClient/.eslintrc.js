@@ -1,6 +1,5 @@
 module.exports = {
   env: {
-    commonjs: true,
     es6: true,
     node: true,
     jest: true,
@@ -12,11 +11,32 @@ module.exports = {
     Atomics: 'readonly',
     SharedArrayBuffer: 'readonly',
   },
+  parser: '@typescript-eslint/parser',
   parserOptions: {
-    ecmaVersion: 11,
+    ecmaVersion: 2018,
+    sourceType: 'module',
+    project: './tsconfig.json',
   },
+  plugins: [
+    '@typescript-eslint',
+  ],
   rules: {
-    "new-cap": ["off"],
-    "max-len": ["off"],
+    "new-cap": "off",
+    "@typescript-eslint/no-unused-vars-experimental": "error",
+    "no-unused-vars": "off",
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        "ts": "never",
+      }
+    ],
+  },
+  settings: {
+    "import/resolver": {
+      node: {
+        extensions: [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
   },
 };
