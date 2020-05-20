@@ -22,6 +22,9 @@ module.exports = {
   ],
   rules: {
     "new-cap": "off",
+    "max-len": "off",
+    "no-useless-constructor": "off",
+    "@typescript-eslint/no-useless-constructor": "error",
     "@typescript-eslint/no-unused-vars-experimental": "error",
     "no-unused-vars": "off",
     "import/extensions": [

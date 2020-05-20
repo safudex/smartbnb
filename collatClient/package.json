@@ -14,9 +14,15 @@
   "private": true,
   "license": "ISC",
   "dependencies": {
+    "@binance-chain/javascript-sdk": "^3.0.2",
     "@cityofzion/neon-api": "^4.8.0",
     "@cityofzion/neon-core": "^4.8.0",
-    "@cityofzion/neon-js": "^4.8"
+    "@cityofzion/neon-js": "^4.8",
+    "@types/redis": "^2.8.21",
+    "@types/ws": "^7.2.4",
+    "axios": "^0.19.2",
+    "redis": "^3.0.2",
+    "ws": "^7.3.0"
   },
   "devDependencies": {
     "typescript": "^3.9.2",
