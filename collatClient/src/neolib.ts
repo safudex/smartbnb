@@ -42,6 +42,10 @@ class NeoApi {
   public subscribe(callback: (event:NotificationMessage)=>void) {
     return this.notifications.subscribe(this.contractScriptHash, callback);
   }
+
+  get address(): string {
+    return this.account.address;
+  }
 }
 
 export { NotificationMessage };

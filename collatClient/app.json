@@ -12,5 +12,8 @@
     "BNC_TICKER": {
       "description": "Ticker of the BEP2 token on Binance Chain"
     }
-  }
+  },
+  "addons":[
+    "openredis"
+  ]
 }
