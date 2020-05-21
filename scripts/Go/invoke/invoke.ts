@@ -2,6 +2,11 @@ const fs = require('fs');
 const axios = require('axios');
 const Neon = require("@cityofzion/neon-js");
 
+type contractparam = {
+    type:number,
+    value:string | contractparam[]
+}
+
 const CONSTRACT_HASH = "c1384e12e410cc6a58677324b5ac14ad255684e4" //const
 
 enum CONTRACT_CONSTANTS {
