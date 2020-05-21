@@ -7,8 +7,6 @@ type contractparam = {
     value:string | contractparam[]
 }
 
-const CONSTRACT_HASH = "c1384e12e410cc6a58677324b5ac14ad255684e4" //const
-
 enum CONTRACT_CONSTANTS {
     SLICESLEN = 16,
     STG_TYPE_GENERAL = "GENERAL",
@@ -224,18 +222,19 @@ var ECO_WALLET = new Neon.wallet.Account(cmdArgs[0]); //ALWAYS CONST????
 const NODE_URL = cmdArgs[1]
 const API_NODE = new Neon.api.neoCli.instance(NODE_URL);
 const PORTINGCONTRACTID = cmdArgs[2]
+const CONSTRACT_HASH = cmdArgs[3]
 
 const raw_state = {
-    signatures:cmdArgs[3],
-    xs:cmdArgs[4],
-    ys:cmdArgs[5],
-    signableBytes:cmdArgs[6],
-    pres:cmdArgs[7],
-    presHash:cmdArgs[8],
-    presHashMod:cmdArgs[9],
-    txProof:cmdArgs[10],
-    blockHeader:cmdArgs[11],
-    txBytes:cmdArgs[12]
+    signatures:cmdArgs[4],
+    xs:cmdArgs[5],
+    ys:cmdArgs[6],
+    signableBytes:cmdArgs[7],
+    pres:cmdArgs[8],
+    presHash:cmdArgs[9],
+    presHashMod:cmdArgs[10],
+    txProof:cmdArgs[11],
+    blockHeader:cmdArgs[12],
+    txBytes:cmdArgs[13]
 }
 
 SaveState(raw_state)
