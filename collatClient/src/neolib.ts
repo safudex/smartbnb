@@ -51,7 +51,7 @@ class NeoApi {
     const privkey = this.account.privateKey;
     const nodeURL = await this.apiProvider.getRPCEndpoint();
     // parameters: privkey nodeURL txHash portingContractID
-    spawn('go', ['run', '../scripts/Go/main.go', privkey, nodeURL, txHash, portingContractID]);
+    spawn('go', ['run', '../scripts/Go/main.go', privkey, nodeURL, txHash, portingContractID, this.contractScriptHash]);
   }
 }
 
