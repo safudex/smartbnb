@@ -32,7 +32,6 @@ function neoEventHandler(neo: NeoApi, redisUrl: string, collatId: string, bnc: B
           if (bncEvent.stream !== 'transfers') {
             return;
           }
-          // const txhash = bncEvent.data.H;
           const assetTransferred = bncEvent.data.t[0].c[0].a;
           const amountTransferred = parseFloat(bncEvent.data.t[0].c[0].A);
           const from = bncEvent.data.f;
