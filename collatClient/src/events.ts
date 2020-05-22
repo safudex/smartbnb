@@ -22,7 +22,7 @@ function neoEventHandler(neo: NeoApi, redisUrl: string, collatId: string, bnc: B
     switch (operation) {
       case 'portrequestcreated': {
         const userAddr = u.hexstring2str(event.event[3].value);
-        const amountRequested = hex2int(event.event[4].value);
+        const amountRequested = hex2int(event.event[4]);
         bnc.subscribe((msg) => {
           const bncEvent = JSON.parse(msg.toString());
           if (bncEvent.stream !== 'transfers') {
@@ -46,7 +46,7 @@ function neoEventHandler(neo: NeoApi, redisUrl: string, collatId: string, bnc: B
       }
       case 'withdrawrequestcreated': {
         const userBCNAddr = u.hexstring2str(event.event[3].value);
-        const withdrawAmountRequested = hex2int(event.event[4].value); // Again, no float imprecision because of the reasons stated in the comment above
+        const withdrawAmountRequested = hex2int(event.event[4]); // Again, no float imprecision because of the reasons stated in the comment above
         const txHash = await bnc.send(userBCNAddr, withdrawAmountRequested);
         await set(portingContractId, txHash); // Store txhash
         break;
