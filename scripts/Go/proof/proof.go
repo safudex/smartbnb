@@ -3,7 +3,6 @@ package proof
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -46,8 +45,6 @@ type voteData struct {
 
 func createVote(vd voteData) *v.Vote {
 	stamp := vd.timestamp
-	fmt.Println("stamp", stamp)
-	fmt.Println("index", vd.validatorIndex)
 	return &v.Vote{
 		Type:      v.SignedMsgType(byte(v.PrecommitType)),
 		Height:    vd.height,
@@ -76,7 +73,6 @@ func VoteSignableHexBytes(vd voteData) string {
 	signBytes = append([]byte{byte(timeStart + 5)}, signBytes...)
 	signBytes = append([]byte{byte(timeStart)}, signBytes...)
 	signBytes = append([]byte{byte(vd.round)}, signBytes...)
-	fmt.Println("signBytes", hex.EncodeToString(signBytes))
 	return hex.EncodeToString(signBytes)
 }
 
@@ -200,7 +196,6 @@ func GetProof(txHash string) SPV {
 	restx, _ := client.Tx(bytesTxHash, true)
 
 	txbytes := restx.Proof.Data
-	fmt.Println(txbytes)
 	start, l := getOutputStart(txbytes)
 	paqtx := make([]byte, 0)
 	paqtx = append(paqtx, []byte{byte(start)}...) //Warning: assuming txProofIndex always < byteSize
@@ -444,7 +439,6 @@ func getOutputStart(bz []byte) (start int, length int) {
 	bz = bz[n:]
 	start += n
 
-	//fmt.Println("val64", value64)
 	//10 78 42 entra dentro de slice no byte
 	//slide field number and type
 	value64, n = DecodeUvarint(bz)
