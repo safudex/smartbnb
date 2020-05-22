@@ -18,6 +18,6 @@ notificationsProvider.subscribe(CONTRACT_SCRIPTHASH, async (event)=>{
     return; // ignore
   }
   const collatID = u.hexstring2str(event.event[1].value);
-  const liquidatedGAS = hex2int(event.event[2].value);
+  const liquidatedGAS = hex2int(event.event[2]);
   emailProvider.send(`Collateral provider with ID ${collatID} has had it's deposit of ${liquidatedGAS} GAS liquidated.`);
 });
