@@ -21,3 +21,15 @@ Because of this collateral, which is set to be more than 150% of the locked toke
 Custodians are rewarded for their custodial services. Anyone can become a custodian by depositing Neo as a bond. For the first time, it is possible to receive a return on capital that is locked on the Neo blockchain.
 
 For more information, check out [our protocol specification](https://github.com/safudex/smartbnb/blob/master/protocol.md).
+
+## Deploy smartBNB for your own token
+1. Change the following constants inside [Contract.cs](./Contract/smartBNB/Contract.cs):
+	- PriceOracle (you will need to generate the private key to be used in the oracle contract)
+	- Denom
+	- Name()
+	- Symbol()
+2. Deploy a full node along with [NeoPubSub](https://github.com/corollari/neo-PubSub)
+3. Deploy the updated Contract.cs to MainNet or TestNet
+4. Deploy a [price oracle for your token](https://github.com/corollari/neo-oracle)
+5. Deploy a [collateral provider](./collatClient)
+6. Deploy a system that arbitrages liquidated collateral
