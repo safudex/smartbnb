@@ -19,7 +19,7 @@ index|arg|info
 3|`ulong[][] preshash`|8 arrays of 8 words of sha512(signature[0:32] + validatorPubK + signableBytes) `[[word0sha512S0, word1sha512S0], [word0sha512S1, word1sha512S1], ...]`
 4|`byte[] txproof`|Data related to the SPV `[txProofRootHash + txProofLeafHash + txProofIndex + txProofTotal + ...txProofAunts]`
 5|`byte[] blockHeader`|Header data cdc encoded. `len(cdcVersion) + cdcVersion + len(cdcChainID) + cdcChainID + ... + len(cdcProposerAddress) + cdcProposerAddress`
-6|`byte[] txBytes`|Position where encoded output starts + output length + amino encoded transaction. `[indexOutputStart, outputLength, ...encodedTx]`
+6|`byte[] txBytes`|Position where encoded output starts + output length + amino encoded transaction. `[indexOutputStart + outputLength + ...encodedTx]`
 
 PM
 index|arg|info
@@ -33,7 +33,7 @@ SIGNABLEBYTES
 index|arg|info
 -|-|-
 2|`string id`|Index signature
-3|`byte[][] signablebytes`|Vote by validator
+3|`byte[][] signablebytes`|`[ValidatorIndex0 + (timestampStart0 + 5) + timestampStart0 + Round + VoteByValidator0, ValidatorIndex1 + ... + VoteByValidator1, ...]`
 
 POINT MUL (SIMPLE, MULTI)
 index|arg|info
