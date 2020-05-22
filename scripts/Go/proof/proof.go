@@ -4,17 +4,18 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/binance-chain/go-sdk/client/rpc"
-	ctypes "github.com/binance-chain/go-sdk/common/types"
-	"github.com/binance-chain/go-sdk/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	v "github.com/tendermint/tendermint/types"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/binance-chain/go-sdk/client/rpc"
+	ctypes "github.com/binance-chain/go-sdk/common/types"
+	"github.com/binance-chain/go-sdk/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	v "github.com/tendermint/tendermint/types"
 )
 
 var cdc = types.NewCodec()
@@ -72,7 +73,7 @@ func VoteSignableHexBytes(vd voteData) string {
 		timeStart = 102
 	}
 	signBytes = append([]byte{byte(vd.validatorIndex)}, signBytes...)
-	signBytes = append([]byte{byte(timeStart+5)}, signBytes...)
+	signBytes = append([]byte{byte(timeStart + 5)}, signBytes...)
 	signBytes = append([]byte{byte(timeStart)}, signBytes...)
 	signBytes = append([]byte{byte(vd.round)}, signBytes...)
 	fmt.Println("signBytes", hex.EncodeToString(signBytes))
@@ -147,11 +148,13 @@ func WriteStringToFile(filepath, s string) error {
 }
 
 //r := strings.Split(string(out), "\n")
-func Invoke(spv SPV) string {
+func Invoke(spv SPV, privk string, nodeUrl, string, pcid string, script_hash string) string {
 	WriteStringToFile("pointmulsteps", spv.MulStepsSB+"||"+spv.MulStepsHA)
 	out, err := exec.Command("node", "invoke/invoke_neonJS.js",
-		"colladId",
-		spv.TxId,
+		privk,
+		nodeUrl,
+		pcid,
+		script_hash,
 		spv.Signatures,
 		spv.XSigLow,
 		spv.YSigLow,
