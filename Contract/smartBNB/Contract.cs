@@ -108,7 +108,6 @@ namespace smartBNB
             public BigInteger AmountBNB;
             public BigInteger LastTimestamp;
             public BigInteger GASDeposit;
-            public string Denom;
         }
 
         [Serializable]
@@ -175,7 +174,7 @@ namespace smartBNB
                 }
                 else if (operation=="newPorting")
                 {
-                    byte[] r = RequestNewPorting((byte[])args[0], (byte[])args[1], (BigInteger)args[2], (string)args[3]);
+                    byte[] r = RequestNewPorting((byte[])args[0], (byte[])args[1], (BigInteger)args[2]);
                     Storage.Put("r", r.Length>0?"true":"false");
                     return r.Length>0;
                 }
