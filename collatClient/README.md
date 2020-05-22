@@ -1,18 +1,27 @@
-# Collateral Provider Client
-> An implementation of a client for collateral providers
+# Collateral Provider
+> A client implementation for collateral providers
 
 ## Set up
-1. Create a private key with any NEO wallet (eg: [ansy](https://snowypowers.github.io/ansy/))
-2. Compute the address associated with the private key you just created, you can use neon-js
-3. Install the dependencies with `npm install`
+1. Install the dependencies with `npm install`
+2. Set up a redis instance
+3. Set up the following environment variables:
+  - NEO\_PRIVATE\_KEY: Private key of the registered collateral provider on NEO. This key should own some GAS in order to send proofs to contest a challenge
+  - CONTRACT\_SCRIPTHASH: ScriptHash of the NEO smart contract that holds smartBNB
+  - REDIS\_URL: Url of the redis instance, should be unprotected
+  - BNC\_PRIVATE\_KEY: Private key of the Binance Chain account that will keep custody of the tokens
+  - BNC\_ASSET: Binance Chain ID of the asset that will be ported through smartBNB
+  - EMAIL\_ADDRESS: Email address where special alerts will be sent in case the owner needs to take action on something
 
 ## Run
 ```bash
-PRIVATE_KEY="9ab7e154840daca3a2efadaf0df93cd3a5b51768c632f5433f86909d9b994a69" # Replace with the private key you generated during setup
-CONTRACT_SCRIPTHASH="5b7074e873973a6ed3708862f219a6fbf4d1c411" # Replace with the scripthash of the contract you deployed
-BNC_TICKER="BNB_BTCB-1DE" # Replace with the Binance Chain ticker of the BEP2 token that the oracle needs to serve
-export PRIVATE_KEY CONTRACT_SCRIPTHASH BNC_TICKER
-node index.js
+CONTRACT_SCRIPTHASH="5b707..." # Replace with the scripthash of the contract you deployed
+NEO_PRIVATE_KEY="..." # Replace
+REDIS_URL="..." # Replace
+BNC_PRIVATE_KEY="..." # Replace
+BNC_ASSET="..." # Replace
+EMAIL_ADDRESS="..." # Replace
+export NEO_PRIVATE_KEY CONTRACT_SCRIPTHASH REDIS_URL BNC_PRIVATE_KEY BNC_ASSET EMAIL_ADDRESS
+npm start
 ```
 
 ## Deploy
