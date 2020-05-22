@@ -4,14 +4,10 @@ import redis from 'redis';
 import NeoApi, { NotificationMessage } from './neolib';
 import BncApi from './bnclib';
 import Emailer from './emailer';
-
-function hex2int(hex: string): number {
-  const reverseHex = (rhex: string) => rhex.match(/.{2}/g)?.reverse()?.join('') ?? '0';
-  return parseInt(reverseHex(hex), 16);
-}
+import hex2int from './neoutils';
 
 function neoEventHandler(neo: NeoApi, redisUrl: string, collatId: string, bnc: BncApi, emailAddress: string) {
-  const emailer = new Emailer(emailAddress);
+  const emailer = new Emailer(emailAddress, '"Collateral provider" <collateral@smartbnb.net>', 'Updates on your collateral provider');
   const redisClient = redis.createClient(redisUrl);
   const get: (key: string) => Promise<string> = promisify(redisClient.get).bind(redisClient); // get("key")
   const set: (key: string, value: string) => Promise<unknown> = promisify(redisClient.set).bind(redisClient); // set("key", "value")

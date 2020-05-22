@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 export default class Emailer {
     private transporter: Promise<nodemailer.Transporter>;
 
-    constructor(private toEmailAddress: string) {
+    constructor(private toEmailAddress: string, private fromAddress:string, private subject:string) {
       // Use ethereal.email
       this.transporter = new Promise((resolve, reject) => {
         nodemailer.createTestAccount().then((account) => {
@@ -23,9 +23,9 @@ export default class Emailer {
 
     public async send(message: string) {
       await (await this.transporter).sendMail({
-        from: '"Collateral provider" <collateral@smartbnb.net>',
+        from: this.fromAddress,
         to: this.toEmailAddress,
-        subject: 'Updates on your collateral provider',
+        subject: this.subject,
         text: message,
       });
     }

@@ -32,4 +32,4 @@ For more information, check out [our protocol specification](https://github.com/
 3. Deploy the updated Contract.cs to MainNet or TestNet
 4. Deploy a [price oracle for your token](https://github.com/corollari/neo-oracle)
 5. Deploy a [collateral provider](./collatClient)
-6. Deploy a system that arbitrages liquidated collateral
+6. Deploy a [system that sends alerts on collateral liquidations](./liquidationAlertsBot) for arbitrageurs
