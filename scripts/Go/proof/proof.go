@@ -77,7 +77,7 @@ func VoteSignableHexBytes(vd voteData) string {
 }
 
 func Decompress(s string) (string, string, string) {
-	out, err := exec.Command("python3", "helper.py", "1", s).Output()
+	out, err := exec.Command("python", "helper.py", "1", s).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +86,7 @@ func Decompress(s string) (string, string, string) {
 }
 
 func GetSbHa(msg string, sig string, pubk string) (string, string, string, string, string) {
-	out, err := exec.Command("python3", "helper.py", "3", msg, sig, pubk).Output()
+	out, err := exec.Command("python", "helper.py", "3", msg, sig, pubk).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -95,7 +95,7 @@ func GetSbHa(msg string, sig string, pubk string) (string, string, string, strin
 }
 
 func GetPreprocessedMsg(msg string) string {
-	out, err := exec.Command("python3", "helper.py", "2", msg).Output()
+	out, err := exec.Command("python", "helper.py", "2", msg).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +104,7 @@ func GetPreprocessedMsg(msg string) string {
 }
 
 func GetPointMulSteps(isHA string, sigint string, its string, pubk string) string {
-	out, err := exec.Command("python3", "helper.py", "4", isHA, sigint, its, pubk).Output()
+	out, err := exec.Command("python", "helper.py", "4", isHA, sigint, its, pubk).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -144,9 +144,9 @@ func WriteStringToFile(filepath, s string) error {
 }
 
 //r := strings.Split(string(out), "\n")
-func Invoke(spv SPV, privk string, nodeUrl, string, pcid string, script_hash string) string {
+func Invoke(spv SPV, privk string, nodeUrl string, pcid string, script_hash string) string {
 	WriteStringToFile("pointmulsteps", spv.MulStepsSB+"||"+spv.MulStepsHA)
-	out, err := exec.Command("node", "invoke/invoke_neonJS.js",
+	out, err := exec.Command("node", "invoke/invoke.js",
 		privk,
 		nodeUrl,
 		pcid,

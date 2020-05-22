@@ -53,7 +53,7 @@ async function invokeOperation(operation: string, args: any[], gas: number, fees
         const response = await invoke(operation, args, gas, fees, sh)
         console.log(response.txid)
     } catch (error) {
-        console.log(error.message)
+        console.log("Error: ", error.message)
     }
 }
 

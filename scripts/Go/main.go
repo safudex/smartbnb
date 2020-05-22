@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/test/test/proof"
+	"github.com/sadufex/smartbnb/proof"
 )
 
 func main() {
 	args := os.Args[1:]
 	spv := proof.GetProof(args[0])
-	proof.Invoke(spv, args[1], args[2], args[3])
+	fmt.Println(proof.Invoke(spv, args[1], args[2], args[3], args[4]))
 }
