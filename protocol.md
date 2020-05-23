@@ -142,7 +142,7 @@ Another system based on atomic swaps would
 Yet another system can be based on initially sending a small transaction, which will lock the coins. If the attack is performed on that transactions only the amount of that transaction will be lost.
 
 # Implementation
-- [NEO smart contract](./Contract/smartBNB/Contract.cs) ([interface](./Contract/smartBNB/operationargs.md))
+- [NEO smart contract](./Contract/smartBNB/Contract.cs) ([interface](./Contract/smartBNB/contractInterface.md))
 - [Price oracle](https://github.com/corollari/neo-oracle)
 - [NEO notifications PubSub system](https://github.com/corollari/neo-PubSub)
 
