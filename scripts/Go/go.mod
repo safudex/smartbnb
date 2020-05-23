@@ -1,4 +1,4 @@
-module github.com/test/test
+module github.com/sadufex/smartbnb
 
 go 1.12
 

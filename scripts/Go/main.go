@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/test/test/proof"
+	"os"
+
+	"github.com/sadufex/smartbnb/proof"
 )
+
 func main() {
-	spv := proof.GetProof("C948A2B974C93A63BDC79A13FD2CA6B93394E68F0CC8BDFDD58F39F89C256DF7")
-    fmt.Println(spv.TxProof)
-    fmt.Println(proof.Invoke(spv))
+	args := os.Args[1:]
+	spv := proof.GetProof(args[0])
+	fmt.Println(proof.Invoke(spv, args[1], args[2], args[3], args[4]))
 }

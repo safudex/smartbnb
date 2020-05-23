@@ -3,18 +3,18 @@ package proof
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
-	"github.com/binance-chain/go-sdk/client/rpc"
-	ctypes "github.com/binance-chain/go-sdk/common/types"
-	"github.com/binance-chain/go-sdk/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	v "github.com/tendermint/tendermint/types"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/binance-chain/go-sdk/client/rpc"
+	ctypes "github.com/binance-chain/go-sdk/common/types"
+	"github.com/binance-chain/go-sdk/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	v "github.com/tendermint/tendermint/types"
 )
 
 var cdc = types.NewCodec()
@@ -45,8 +45,6 @@ type voteData struct {
 
 func createVote(vd voteData) *v.Vote {
 	stamp := vd.timestamp
-	fmt.Println("stamp", stamp)
-	fmt.Println("index", vd.validatorIndex)
 	return &v.Vote{
 		Type:      v.SignedMsgType(byte(v.PrecommitType)),
 		Height:    vd.height,
@@ -72,15 +70,14 @@ func VoteSignableHexBytes(vd voteData) string {
 		timeStart = 102
 	}
 	signBytes = append([]byte{byte(vd.validatorIndex)}, signBytes...)
-	signBytes = append([]byte{byte(timeStart+5)}, signBytes...)
+	signBytes = append([]byte{byte(timeStart + 5)}, signBytes...)
 	signBytes = append([]byte{byte(timeStart)}, signBytes...)
 	signBytes = append([]byte{byte(vd.round)}, signBytes...)
-	fmt.Println("signBytes", hex.EncodeToString(signBytes))
 	return hex.EncodeToString(signBytes)
 }
 
 func Decompress(s string) (string, string, string) {
-	out, err := exec.Command("python3", "helper.py", "1", s).Output()
+	out, err := exec.Command("python", "helper.py", "1", s).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -89,7 +86,7 @@ func Decompress(s string) (string, string, string) {
 }
 
 func GetSbHa(msg string, sig string, pubk string) (string, string, string, string, string) {
-	out, err := exec.Command("python3", "helper.py", "3", msg, sig, pubk).Output()
+	out, err := exec.Command("python", "helper.py", "3", msg, sig, pubk).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +95,7 @@ func GetSbHa(msg string, sig string, pubk string) (string, string, string, strin
 }
 
 func GetPreprocessedMsg(msg string) string {
-	out, err := exec.Command("python3", "helper.py", "2", msg).Output()
+	out, err := exec.Command("python", "helper.py", "2", msg).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +104,7 @@ func GetPreprocessedMsg(msg string) string {
 }
 
 func GetPointMulSteps(isHA string, sigint string, its string, pubk string) string {
-	out, err := exec.Command("python3", "helper.py", "4", isHA, sigint, its, pubk).Output()
+	out, err := exec.Command("python", "helper.py", "4", isHA, sigint, its, pubk).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -147,11 +144,13 @@ func WriteStringToFile(filepath, s string) error {
 }
 
 //r := strings.Split(string(out), "\n")
-func Invoke(spv SPV) string {
+func Invoke(spv SPV, privk string, nodeUrl string, pcid string, script_hash string) string {
 	WriteStringToFile("pointmulsteps", spv.MulStepsSB+"||"+spv.MulStepsHA)
-	out, err := exec.Command("node", "invoke/invoke_neonJS.js",
-		"colladId",
-		spv.TxId,
+	out, err := exec.Command("node", "invoke/invoke.js",
+		privk,
+		nodeUrl,
+		pcid,
+		script_hash,
 		spv.Signatures,
 		spv.XSigLow,
 		spv.YSigLow,
@@ -197,7 +196,6 @@ func GetProof(txHash string) SPV {
 	restx, _ := client.Tx(bytesTxHash, true)
 
 	txbytes := restx.Proof.Data
-	fmt.Println(txbytes)
 	start, l := getOutputStart(txbytes)
 	paqtx := make([]byte, 0)
 	paqtx = append(paqtx, []byte{byte(start)}...) //Warning: assuming txProofIndex always < byteSize
@@ -441,7 +439,6 @@ func getOutputStart(bz []byte) (start int, length int) {
 	bz = bz[n:]
 	start += n
 
-	//fmt.Println("val64", value64)
 	//10 78 42 entra dentro de slice no byte
 	//slide field number and type
 	value64, n = DecodeUvarint(bz)
