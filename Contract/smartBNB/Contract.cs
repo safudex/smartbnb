@@ -120,6 +120,7 @@ namespace smartBNB
 			public BigInteger UnverifiedCustodiedBNB;
         }
 
+	// This part requires further investigation, as we must make sure that the amount of bytes read or written should never exceed the max amount of state allowed in the vm
         [Serializable]
         struct GeneralChallengeVariablesPM
         {
