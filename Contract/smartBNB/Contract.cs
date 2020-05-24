@@ -150,65 +150,17 @@ namespace smartBNB
 
         public static object Main(string operation, params object[] args)
         {
-           
-            Storage.Put("exe", operation);
-
             if (Runtime.Trigger == TriggerType.Application)
             {
-                if(operation=="savestate")
-                {
-                    bool r = SaveChallengeState(args);
-                    Storage.Put("r", r?"true":"false");
-                    return r;
-                }
-                else if (operation=="executeChallenge")
-                {
-                    bool r = executeChallenge(args);
-                    Storage.Put("r", r?"true":"false");
-                    return r;
-                }
-                else if (operation=="registerAsCollateral")
-                {
-                    bool r = RegisterAsCollateral((byte[])args[0], (byte[])args[1], (BigInteger)args[2], (byte)args[3]);
-                    Storage.Put("r", r?"true":"false");
-                    return r;
-                }
-                else if (operation=="newPorting")
-                {
-                    byte[] r = RequestNewPorting((byte[])args[0], (byte[])args[1], (BigInteger)args[2]);
-                    Storage.Put("r", r.Length>0?"true":"false");
-                    return r.Length>0;
-                }
-                else if (operation=="ackDepositByUser")
-                {
-                    bool r = AckDepositByUser((byte[])args[0]);
-                    Storage.Put("r", r?"true":"false");
-                    return r;
-                }
-                else if (operation=="challengedeposit")
-                {
-                    bool r = ChallengeDeposit((byte[])args[0]);
-                    Storage.Put("r", r?"true":"false");
-                    return r;
-                }
-                else if (operation=="challengewithdraw")
-                {
-                    bool r = ChallengeWithdraw((byte[])args[0]);
-                    Storage.Put("r", r?"true":"false");
-                    return r;
-                }
-                else if (operation=="requestwithdraw")
-                {
-                    bool r = RequestWithdraw((byte[])args[0], (byte[])args[1], (BigInteger)args[2], (byte[])args[3]);
-                    Storage.Put("r", r?"true":"false");
-                    return r;
-                }
-                else if (operation=="unlockcollateral")
-                {
-                    bool r = UnlockCollateral((byte[])args[0]);
-                    Storage.Put("r", r?"true":"false");
-                    return r;
-                }
+                if(operation=="savestate") return SaveChallengeState(args);
+                else if (operation=="executeChallenge") return executeChallenge(args);
+                else if (operation=="registerAsCollateral") return RegisterAsCollateral((byte[])args[0], (byte[])args[1], (BigInteger)args[2], (byte)args[3]);
+                else if (operation=="newPorting") return RequestNewPorting((byte[])args[0], (byte[])args[1], (BigInteger)args[2]);
+                else if (operation=="ackDepositByUser") return AckDepositByUser((byte[])args[0]);
+                else if (operation=="challengedeposit") return ChallengeDeposit((byte[])args[0]);
+                else if (operation=="challengewithdraw") return ChallengeWithdraw((byte[])args[0]);
+                else if (operation=="requestwithdraw") return RequestWithdraw((byte[])args[0], (byte[])args[1], (BigInteger)args[2], (byte[])args[3]);
+                else if (operation=="unlockcollateral") return UnlockCollateral((byte[])args[0]);
                 else if (operation=="updatepriceoracle")
                 {
                     if (!Runtime.CheckWitness(PriceOracle)) return false; // Only updatable by oracle
@@ -560,7 +512,6 @@ namespace smartBNB
                 }
                 return false;
             }
-            Storage.Put("kkk", challengeResult?"t":"f");
             return challengeResult;
         }
 
@@ -690,7 +641,7 @@ namespace smartBNB
             pc.LastTimestamp = timestamp;
             pc.GASDeposit = collateralAmountNedeed/FACTOR_PORTREQUEST_DIVISOR;
             putPortingContract(portingContractID, pc);
-            Storage.Put("pcid", portingContractID);
+	    
             TransferCGAS(userAddr, ExecutionEngine.ExecutingScriptHash, pc.GASDeposit);
             PortRequestCreated(collatID, portingContractID, userAddr, AmountBNB);
             return portingContractID;
@@ -904,7 +855,6 @@ namespace smartBNB
             for (int i = 0; i<2; i++)
             {
                 key = portingContractID.Concat(labels[i].AsByteArray());
-                Runtime.Notify(key);
                 if (Storage.Get(key).Length==0)
                     return false;
             }
@@ -912,10 +862,7 @@ namespace smartBNB
             portingContractID = portingContractID.Concat(STG_TYPE_POINTMUL.AsByteArray());
             
             byte[] num = new byte[16];
-            for (byte i=1; i<num.Length; i++)
-            {
-                num[i] = i;
-            }
+            for (byte i=1; i<num.Length; i++) num[i] = i;
             
             for (int i = 2; i<labels.Length; i++)
             {
@@ -1950,7 +1897,6 @@ namespace smartBNB
                 
                 if (i == Ps.Length)
                 {
-                    Runtime.Notify("entra sii");
                     bs = mulid+((BigInteger)(iarr+1)).AsByteArray().AsString();
                     Pbs = "Ps_"+bs;
                     Ps = (BigInteger[][])getStateFromStorage(STG_TYPE_POINTMUL, stg_key, Pbs);
