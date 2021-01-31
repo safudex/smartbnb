@@ -22,7 +22,7 @@
     "@types/nodemailer": "^6.4.0",
     "@types/redis": "^2.8.21",
     "@types/ws": "^7.2.4",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "nodemailer": "^6.4.6",
     "redis": "^3.0.2",
     "ws": "^7.3.0"
