@@ -25,7 +25,7 @@
     "axios": "^0.21.1",
     "nodemailer": "^6.4.6",
     "redis": "^3.0.2",
-    "ws": "^7.3.0"
+    "ws": "^7.4.6"
   },
   "devDependencies": {
     "typescript": "^3.9.2",
